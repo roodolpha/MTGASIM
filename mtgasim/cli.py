@@ -285,7 +285,17 @@ def cmd_optimise(cfg, a):
 
 def cmd_serve(cfg, a):
     from . import server
-    server.serve(cfg, a.port, open_browser=not a.no_browser)
+    server.serve(cfg, a.port, open_browser=not a.no_browser, track=not a.no_track)
+
+
+def cmd_track(cfg, a):
+    from . import tracker
+    if a.import_from:
+        print("Copied: " + ", ".join(tracker.import_old_tracker(cfg, a.import_from)))
+        print(f"Rebuilt the stats for {tracker.rebuild(cfg)} games.")
+        return
+    print("Watching Arena's log for games (Ctrl+C to stop)...")
+    tracker.run(cfg)
 
 
 def cmd_share(cfg, a):
@@ -411,7 +421,12 @@ def main(argv=None):
     s = sub.add_parser("serve", help="open the local dashboard")
     s.add_argument("--port", type=int, default=8780)
     s.add_argument("--no-browser", action="store_true")
+    s.add_argument("--no-track", action="store_true", help="don't watch Arena's log for games")
     s.set_defaults(fn=cmd_serve)
+
+    s = sub.add_parser("track", help="record your Arena games from the log (serve does this too)")
+    s.add_argument("--import-from", metavar="FOLDER", help="bring in history from an Arena Tracker folder")
+    s.set_defaults(fn=cmd_track)
 
     s = sub.add_parser("share", help="opt in: send your results to the public site")
     s.add_argument("--name", help="display name on the site (leave out to stay anonymous)")

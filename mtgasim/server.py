@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from . import __version__, decks as D, formats, gauntlet, runner, stats
 
 PAGE = Path(__file__).resolve().parent / "web" / "dashboard.html"
+TRACKER_PAGE = Path(__file__).resolve().parent / "web" / "tracker.html"
 
 
 class Jobs:
@@ -145,6 +146,15 @@ def make_handler(cfg, jobs):
             path = u.path.rstrip("/") or "/"
             if path == "/":
                 return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            if path == "/tracker":
+                from . import tracker
+                f = tracker.data_file(cfg)
+                data = f.read_text(encoding="utf-8") if f.exists() else '{"matches":[],"cards":{}}'
+                page = TRACKER_PAGE.read_text(encoding="utf-8").replace("/*__DATA__*/{}", data.replace("</", "<\\/"))
+                return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+            if path == "/api/tracker":
+                from . import tracker
+                return self._send(200, tracker.STATE)
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
@@ -203,9 +213,21 @@ def make_handler(cfg, jobs):
     return H
 
 
-def serve(cfg, port=8765, open_browser=True):
+class _Server(ThreadingHTTPServer):
+    # never share a port with another program (on Windows SO_REUSEADDR would let us silently steal it)
+    allow_reuse_address = False
+
+
+def serve(cfg, port=8780, open_browser=True, track=True):
     jobs = Jobs()
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), make_handler(cfg, jobs))
+    if track:
+        from . import tracker
+        tracker.start(cfg)
+    try:
+        httpd = _Server(("127.0.0.1", port), make_handler(cfg, jobs))
+    except OSError:
+        raise SystemExit(f"Port {port} is already in use (the dashboard may already be open: try http://127.0.0.1:{port}/). "
+                         f"Or pick another with: mtgasim serve --port <number>")
     url = f"http://127.0.0.1:{port}/"
     print(f"Dashboard at {url}  (Ctrl+C to stop)")
     if open_browser:
