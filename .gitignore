@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+# local runs and Forge itself never go in the repo
+forge/
+results/
+*.part
+.DS_Store
