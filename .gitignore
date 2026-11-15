@@ -12,3 +12,4 @@ results/
 .DS_Store
 server/node_modules
 server/.wrangler
+tests/fixtures/real_match.log

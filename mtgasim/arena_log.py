@@ -62,12 +62,16 @@ class LogReader:
         self.matches = {}
         self._cur = None
         self._my_team = None
+        self._pending = None   # Arena sends your deck (ConnectResp) just before the match's "Playing" event
 
     def feed(self, line):
         if "matchGameRoomStateChangedEvent" in line:
             self._room(line)
-        elif self._cur is not None and "greToClientEvent" in line:
-            self._gre(line)
+        elif "greToClientEvent" in line:
+            if self._cur is not None:
+                self._gre(line)
+            elif "ConnectResp" in line:
+                self._early_connect(line)
         elif "==> EventSetDeck" in line or "==> DeckUpsertDeck" in line:
             self._deck(line)
 
@@ -114,6 +118,10 @@ class LogReader:
                 self._cur = self.matches.setdefault(mid, ArenaMatch(
                     mid, players[0].get("eventId", "") if players else "", int(d.get("timestamp", 0) or 0)))
                 self._teams = {str(p["systemSeatId"]): p.get("teamId", p["systemSeatId"]) for p in players}
+                if self._pending and not self._cur.my_deck:
+                    self._cur.my_deck, self._cur.my_commanders, seat = self._pending
+                    self._cur.my_seat = self._cur.my_seat or seat
+                self._pending = None
         elif state == "MatchGameRoomStateType_MatchCompleted" and self._cur and self._cur.match_id == mid:
             winner = None
             for r in info.get("finalMatchResult", {}).get("resultList", []):
@@ -126,6 +134,15 @@ class LogReader:
             else:
                 self._cur.result = "Win" if str(winner) == str(my_team) else "Loss"
             self._cur = None
+
+    def _early_connect(self, line):
+        d = _json_tail(line) or {}
+        for msg in d.get("greToClientEvent", {}).get("greToClientMessages", []):
+            dm = (msg.get("connectResp") or {}).get("deckMessage") or {}
+            if dm.get("deckCards"):
+                seats = msg.get("systemSeatIds") or []
+                self._pending = (sorted(dm["deckCards"]), sorted(dm.get("commanderCards", [])),
+                                 str(seats[0]) if len(seats) == 1 else None)
 
     def _gre(self, line):
         d = _json_tail(line)

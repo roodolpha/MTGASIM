@@ -141,7 +141,7 @@ def identity(names, cache_file=None) -> dict:
             cache = json.loads(cpath.read_text(encoding="utf-8"))
         except ValueError:
             cache = {}
-    want = [n for n in dict.fromkeys(names) if n and n not in cache]
+    want = [n for n in dict.fromkeys(names) if n and (n not in cache or "cmc" not in cache[n])]
     for i in range(0, len(want), 75):
         try:
             d = _get("https://api.scryfall.com/cards/collection",
@@ -153,7 +153,8 @@ def identity(names, cache_file=None) -> dict:
             cols = c.get("colors")
             if cols is None:
                 cols = sorted({x for f in c.get("card_faces") or [] for x in f.get("colors") or []})
-            v = {"ci": "".join(c.get("color_identity") or []), "colors": "".join(cols), "type": tl}
+            v = {"ci": "".join(c.get("color_identity") or []), "colors": "".join(cols), "type": tl,
+                 "cmc": c.get("cmc") or 0}
             cache[c["name"]] = v
             cache.setdefault(c["name"].split(" // ")[0], v)
         time.sleep(0.1)
@@ -169,3 +170,29 @@ WUBRG = "WUBRG"
 def colour_string(letters) -> str:
     s = "".join(c for c in WUBRG if c in set(letters))
     return s or "C"
+
+
+GUILDS = {"W": "Mono-White", "U": "Mono-Blue", "B": "Mono-Black", "R": "Mono-Red", "G": "Mono-Green", "C": "Colourless",
+          "WU": "Azorius", "UB": "Dimir", "BR": "Rakdos", "RG": "Gruul", "WG": "Selesnya", "WB": "Orzhov",
+          "UR": "Izzet", "BG": "Golgari", "WR": "Boros", "UG": "Simic", "WUB": "Esper", "UBR": "Grixis",
+          "BRG": "Jund", "WRG": "Naya", "WUG": "Bant", "WBG": "Abzan", "WUR": "Jeskai", "UBG": "Sultai",
+          "WBR": "Mardu", "URG": "Temur", "WUBRG": "Five-colour"}
+
+
+def archetype(main, ident):
+    """A readable name for a constructed deck: its colours plus how fast it is, e.g. "Rakdos Midrange".
+    Speed comes from the average mana value of its non-land cards (counting copies)."""
+    total = n = 0
+    letters = set()
+    for name, q in main.items():
+        i = ident.get(name)
+        if not i or "Land" in i["type"].split(" // ")[0]:
+            continue
+        letters |= set(i["colors"])
+        total += (i.get("cmc") or 0) * q
+        n += q
+    if not n:
+        return None
+    avg = total / n
+    style = "Aggro" if avg < 2.4 else "Midrange" if avg < 3.3 else "Control"
+    return f"{GUILDS.get(colour_string(letters), colour_string(letters))} {style}"

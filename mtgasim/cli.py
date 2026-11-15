@@ -212,8 +212,12 @@ def cmd_gauntlet_from_log(cfg, a):
     if not logs:
         raise SystemExit("Couldn't find Arena's Player.log.")
     print("Building one deck per commander you've faced (takes a while: it looks up each list)...")
+    use_edhrec = bool(a.edhrec or cfg.get("edhrec"))
+    if not use_edhrec:
+        print("(EDHREC top-up is off: decks only hold cards you've seen, plus basics. "
+              "Add --edhrec, or turn it on in Settings, for fuller lists.)")
     made = gauntlet.from_log(arena_log.read_all(logs), cards.CardBook(cfg.cache_dir / "cards.json"),
-                             cfg.gauntlet_dir("brawl"), forge.card_names(cfg.forge_dir))
+                             cfg.gauntlet_dir("brawl"), forge.card_names(cfg.forge_dir), use_edhrec=use_edhrec)
     print(f"{len(made)} Brawl opponent deck(s) in {cfg.gauntlet_dir('brawl')}")
 
 
@@ -385,7 +389,9 @@ def main(argv=None):
     s = g.add_parser("list")
     s.add_argument("format", nargs="?")
     s.set_defaults(fn=cmd_gauntlet_list)
-    g.add_parser("from-log", help="Brawl: a deck for every commander you've faced").set_defaults(fn=cmd_gauntlet_from_log)
+    s = g.add_parser("from-log", help="Brawl: a deck for every commander you've faced")
+    s.add_argument("--edhrec", action="store_true", help="top decks up with EDHREC's average lists")
+    s.set_defaults(fn=cmd_gauntlet_from_log)
 
     for name, fn, two in (("run", cmd_run, False), ("compare", cmd_compare, True)):
         s = sub.add_parser(name, help="simulate a deck against a gauntlet" if not two

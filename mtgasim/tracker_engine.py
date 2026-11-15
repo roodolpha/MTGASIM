@@ -91,7 +91,26 @@ EVENT_NAMES = {
     "Brawl_Ladder": "Competitive Brawl",
     "Play_Brawl_Historic": "Brawl",
     "Play_Brawl": "Standard Brawl",
+    "Ladder": "Standard Ranked",
+    "Traditional_Ladder": "Standard Ranked Bo3",
+    "Historic_Ladder": "Historic Ranked",
+    "Traditional_Historic_Ladder": "Historic Ranked Bo3",
+    "Alchemy_Ladder": "Alchemy Ranked",
+    "Traditional_Alchemy_Ladder": "Alchemy Ranked Bo3",
+    "Timeless_Ladder": "Timeless Ranked",
+    "Traditional_Timeless_Ladder": "Timeless Ranked Bo3",
+    "Explorer_Ladder": "Pioneer Ranked",
+    "Traditional_Explorer_Ladder": "Pioneer Ranked Bo3",
+    "Play": "Standard Play",
+    "Traditional_Play": "Standard Play Bo3",
+    "Historic_Play": "Historic Play",
+    "DirectGame": "Direct Challenge",
 }
+GUILDS = {"W": "Mono-White", "U": "Mono-Blue", "B": "Mono-Black", "R": "Mono-Red", "G": "Mono-Green", "C": "Colourless",
+          "WU": "Azorius", "UB": "Dimir", "BR": "Rakdos", "RG": "Gruul", "WG": "Selesnya", "WB": "Orzhov",
+          "UR": "Izzet", "BG": "Golgari", "WR": "Boros", "UG": "Simic", "WUB": "Esper", "UBR": "Grixis",
+          "BRG": "Jund", "WRG": "Naya", "WUG": "Bant", "WBG": "Abzan", "WUR": "Jeskai", "UBG": "Sultai",
+          "WBR": "Mardu", "URG": "Temur", "WUBRG": "Five-colour"}
 
 
 # ------------------------------------------------------------------ storage
@@ -1627,9 +1646,29 @@ def build_outputs(store, cards):
 
     out = []
     OPP_PROFILE.clear()
+    deck_names = {d["id"]: d.get("name") for d in decks}
+
+    def colours_of(ids):
+        """Colours of the non-land cards seen, for decks without a commander (constructed formats)."""
+        out = set()
+        for g in ids:
+            c = names.get(str(g)) or cards.get(g)
+            names.setdefault(str(g), c)
+            if "Land" not in (c.get("type") or ""):
+                out |= set(c.get("colors") or "")
+        return "".join(x for x in "WUBRG" if x in out) or "C"
+
     for m in matches:
-        opp_cmd, opp_col = label(m["opp_commanders"])
-        my_cmd, _ = label(m["my_commanders"])
+        if m["opp_commanders"]:
+            opp_cmd, opp_col = label(m["opp_commanders"])
+        else:
+            opp_col = colours_of(m.get("opp_seen") or [])
+            opp_cmd = GUILDS.get(opp_col, opp_col)
+        if m["my_commanders"]:
+            my_cmd, _ = label(m["my_commanders"])
+        else:
+            dk = m.get("deck") or {}
+            my_cmd = deck_names.get(dk.get("id")) or GUILDS.get(colours_of(dk.get("cards") or []), "Your deck")
         r = dict(m)
         r.pop("my_user_id", None)
         r.pop("opp_seen", None)

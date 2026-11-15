@@ -24,7 +24,7 @@ class Jobs:
 
     def start(self, cfg, fmt, deck, opps, games):
         with self.lock:
-            if self.current and self.current["state"] == "running":
+            if self.current and self.current["state"] in ("running", "stopping"):
                 raise RuntimeError("A run is already going. Wait for it to finish or stop it.")
             r = runner.Run(cfg, fmt, deck, opps, games, log=lambda *_: None)
             job = {"run": r.id, "label": r.label, "format": fmt.key, "games": games, "done": 0,
@@ -44,8 +44,10 @@ class Jobs:
 
     def stop(self):
         with self.lock:
-            if self.current and self.current["state"] == "running":
-                self.current["_r"].stop()
+            job = self.current
+        if job and job["state"] == "running":
+            job["state"] = "stopping"
+            job["_r"].stop()
 
     def view(self):
         j = self.current
@@ -127,15 +129,47 @@ def optimiser_list(cfg):
     return out
 
 
+def diagnostics_zip(cfg):
+    """Logs and settings for a bug report. Leaves out the sharing key and your Arena account id."""
+    import io
+    import platform
+    import zipfile
+    from . import __version__, setup_wizard
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        safe = {k: v for k, v in cfg.data.items() if k not in ("share_key", "share_id")}
+        z.writestr("config.json", json.dumps(safe, indent=1))
+        info = {"mtgasim": __version__, "python": platform.python_version(), "os": platform.platform()}
+        try:
+            info["setup"] = setup_wizard.status(cfg)
+        except Exception as e:
+            info["setup_error"] = repr(e)
+        z.writestr("system.json", json.dumps(info, indent=1, default=str))
+        for f in (cfg.home / "logs").glob("*.log"):
+            z.writestr(f"logs/{f.name}", f.read_bytes()[-500_000:])
+        t = cfg.home / "tracker" / "tracker.log"
+        if t.exists():
+            z.writestr("logs/tracker.log", t.read_bytes()[-500_000:])
+    return buf.getvalue()
+
+
 def make_handler(cfg, jobs):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
 
+        def handle(self):
+            try:
+                super().handle()
+            except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+                pass   # the browser closed the connection early; nothing to do
+
         def _send(self, code, body, ctype="application/json"):
             data = body if isinstance(body, bytes) else json.dumps(body).encode()
             self.send_response(code)
             self.send_header("Content-Type", ctype)
+            if ctype == "application/zip":
+                self.send_header("Content-Disposition", 'attachment; filename="mtgasim-diagnostics.zip"')
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
@@ -155,6 +189,16 @@ def make_handler(cfg, jobs):
             if path == "/api/tracker":
                 from . import tracker
                 return self._send(200, tracker.STATE)
+            if path == "/api/setup":
+                from . import setup_wizard
+                return self._send(200, setup_wizard.status(cfg))
+            if path == "/api/update":
+                from . import setup_wizard
+                return self._send(200, setup_wizard.check_update())
+            if path == "/api/diagnostics":
+                return self._send(200, diagnostics_zip(cfg), "application/zip")
+            if path == "/api/settings":
+                return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec")})
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
@@ -196,9 +240,30 @@ def make_handler(cfg, jobs):
                     return self._send(200, jobs.start(cfg, fmt, deck, opps, games) and jobs.view())
                 except (ValueError, RuntimeError) as e:
                     return self._send(400, {"error": str(e)})
+            if path == "/api/setup/download":
+                from . import setup_wizard
+                if body.get("what") not in ("java", "forge"):
+                    return self._send(400, {"error": "what must be java or forge"})
+                setup_wizard.start(cfg, body["what"])
+                return self._send(200, {"ok": True})
+            if path == "/api/setup/use":
+                from . import setup_wizard, forge as F
+                try:
+                    return self._send(200, setup_wizard.use_existing(cfg, body.get("forge_dir"), body.get("java"),
+                                                                     body.get("arena_log")))
+                except F.SetupError as e:
+                    return self._send(400, {"error": str(e)})
+            if path == "/api/settings":
+                for k, conv in (("ai_profile", str), ("instances", int), ("edhrec", bool)):
+                    if k in body and body[k] not in (None, ""):
+                        try:
+                            cfg.set(k, conv(body[k]))
+                        except (TypeError, ValueError):
+                            return self._send(400, {"error": f"bad {k}"})
+                return self._send(200, {"ok": True})
             if path == "/api/stop":
                 jobs.stop()
-                return self._send(200, {"ok": True})
+                return self._send(200, {"ok": True, "job": jobs.view()})
             if path == "/api/decks":
                 text = body.get("list") or ""
                 deck = D.parse_arena(text, body.get("name") or "deck")

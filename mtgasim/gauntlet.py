@@ -3,7 +3,7 @@
 A gauntlet is a folder of .dck files (gauntlets/<format>/). You can fill it three ways:
   * drop in decklists yourself (Arena export text or .dck) with `mtgasim gauntlet add`
   * Brawl: build one deck per commander you've faced, from your Arena log (cards you saw them play,
-    topped up with EDHREC's average list for that commander)
+    optionally topped up with EDHREC's average list for that commander: off unless you turn it on)
   * later phases: meta decklists from public sources (see docs/ROADMAP.md)
 """
 import json
@@ -99,10 +99,10 @@ def scryfall_identity(names):
     return out
 
 
-def brawl_deck(commander, seen, forge_names, size=99):
+def brawl_deck(commander, seen, forge_names, size=99, use_edhrec=True):
     """A 99-card Brawl list for an opponent's commander: what you saw them play first, then EDHREC's
     average list, then basics. Only cards that are Brawl-legal, on Arena, in Forge and in colour identity."""
-    pool = list(dict.fromkeys([commander] + list(seen) + edhrec_cards(commander)))
+    pool = list(dict.fromkeys([commander] + list(seen) + (edhrec_cards(commander) if use_edhrec else [])))
     info = scryfall_identity(pool)
     ci = set((info.get(commander) or ("",))[0])
     ok = lambda n: (n in info and n in forge_names and n != commander and info[n][2] == "legal"
@@ -126,7 +126,7 @@ def brawl_deck(commander, seen, forge_names, size=99):
     return deck
 
 
-def from_log(reader, book, folder, forge_names, events=("Brawl",), log=print):
+def from_log(reader, book, folder, forge_names, events=("Brawl",), log=print, use_edhrec=False):
     """One deck per opposing commander in your Arena log (Brawl events only)."""
     seen, faced = {}, Counter()
     for m in reader.matches.values():
@@ -146,7 +146,7 @@ def from_log(reader, book, folder, forge_names, events=("Brawl",), log=print):
         if c not in forge_names:
             log(f"  skipped {c}: Forge doesn't have it")
             continue
-        deck = brawl_deck(c, [x for x, _ in seen[c].most_common()], forge_names)
+        deck = brawl_deck(c, [x for x, _ in seen[c].most_common()], forge_names, use_edhrec=use_edhrec)
         path = deck.save(Path(folder) / f"{slug(c)}.dck")
         made.append((path, n))
         log(f"  {c} (faced {n}x)")

@@ -64,6 +64,7 @@ textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:
 <button data-view="decks">Decks</button>
 <button data-view="optimiser">Optimiser</button>
 <button data-view="new">New run</button>
+<button data-view="settings">Settings</button>
 </nav>
 <div id="job" aria-live="polite"></div>
 </header>
@@ -78,7 +79,7 @@ let STATUS = {formats: []}, DECKS = [];
 
 function show(view, arg) {
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'));
-  ({runs, decks, optimiser, new: newRun, run: runPage})[view](arg);
+  ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup})[view](arg);
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view));
 
@@ -171,6 +172,55 @@ async function newRun() {
   $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; };
 }
 
+
+const kb = n => n > 1e6 ? (n / 1e6).toFixed(0) + ' MB' : Math.round(n / 1e3) + ' KB';
+async function setup() {
+  const st = await api('/api/setup');
+  const row = (ok, title, body) => `<div class="panel" style="display:flex;gap:16px;align-items:flex-start;margin-bottom:12px">
+    <div class="big" style="font-size:26px;color:${ok ? 'var(--win)' : 'var(--hot)'}" aria-hidden="true">${ok ? '✓' : '•'}</div>
+    <div style="flex:1"><h3 style="font-size:18px;margin-bottom:4px">${title}</h3>${body}</div></div>`;
+  const job = n => { const j = (st.jobs || {})[n]; if (!j) return '';
+    if (j.state === 'running') return `<p class="dim">${j.unpacking ? 'Unpacking…' : `Downloading… ${kb(j.done)}${j.total ? ' of ' + kb(j.total) : ''}`}</p>`;
+    if (j.state === 'error') return `<p class="err">That failed: ${esc(j.error)}</p>`;
+    return j.warning ? `<p class="dim">${esc(j.warning)}</p>` : ''; };
+  $('#main').innerHTML = `<h1 style="font-size:34px;margin-bottom:6px">Let's get you set up</h1>
+  <p class="dim" style="margin:0 0 18px">Three things and you're simming. Everything downloads into ${esc(st.home)}.</p>
+  ${row(st.java.ok, 'Java', st.java.ok ? `<p class="dim">Java ${st.java.version} found.</p>` : `<p>The simulator runs on Java 17. About 45 MB.</p><button class="btn" data-dl="java">Download Java</button>${job('java')}`)}
+  ${row(st.forge.ok, 'Forge (the rules engine)', st.forge.ok ? `<p class="dim">Forge ${esc(st.forge.version)} ready.</p>` : `<p>Forge is the open-source Magic engine whose AI plays the games. About 300 MB, then a minute or two to unpack.</p>
+     <button class="btn" data-dl="forge">Download Forge</button>
+     <details style="margin-top:10px"><summary class="dim">Already have Forge?</summary><div class="form" style="margin-top:8px">
+     <label>Forge folder<input id="fdir" placeholder="C:\\Games\\Forge" style="min-width:320px"></label><button class="btn ghost" id="fuse">Use this folder</button></div></details>${job('forge')}`)}
+  ${row(st.arena_log.ok && st.arena_log.detailed !== false, 'Arena log', st.arena_log.ok
+     ? (st.arena_log.detailed === false ? `<p>Found Arena's log, but Detailed Logs looks off. In Arena: <b>Options → Account → Detailed Logs (Plugin Support)</b>, then restart Arena.</p>` : `<p class="dim">Reading ${esc(st.arena_log.path)}. Your games get recorded automatically.</p>`)
+     : `<p>Not found yet. Start Arena once, and turn on <b>Options → Account → Detailed Logs (Plugin Support)</b>. Only needed for game tracking and importing your decks.</p>`)}
+  ${row(st.decks > 0, 'A deck', st.decks ? `<p class="dim">${st.decks} deck${st.decks === 1 ? '' : 's'} saved.</p>` : `<p>Paste one on the <a href="#" id="godecks">Decks</a> page (Arena's Export button copies it).</p>`)}
+  ${st.ready ? '<button class="btn" id="done" style="margin-top:8px">All set, take me in</button>' : ''}`;
+  document.querySelectorAll('[data-dl]').forEach(b => b.onclick = async () => { await api('/api/setup/download', {what: b.dataset.dl}); setTimeout(setup, 800); });
+  const fu = $('#fuse'); if (fu) fu.onclick = async () => { const r = await api('/api/setup/use', {forge_dir: $('#fdir').value}); if (r.error) alert(r.error); setup(); };
+  const gd = $('#godecks'); if (gd) gd.onclick = e => { e.preventDefault(); show('decks'); };
+  const dn = $('#done'); if (dn) dn.onclick = () => show('runs');
+  if (Object.values(st.jobs || {}).some(j => j.state === 'running')) setTimeout(() => { if (document.querySelector('[data-dl]') || /Downloading/.test($('#main').textContent)) setup(); }, 1500);
+}
+
+async function settings() {
+  const [s, st, up] = await Promise.all([api('/api/settings'), api('/api/setup'), api('/api/update')]);
+  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:16px">Settings</h1>
+  <div class="grid2" style="margin-top:0">
+  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Simulator</h2><div class="form">
+   <label>Forge AI<select id="sai">${['Default','Cautious','Reckless','Experimental','Hard','Hardest'].map(a => `<option ${a === (s.ai_profile || 'Default') ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
+   <label>Games at once<input id="sinst" type="number" min="1" max="32" value="${esc(s.instances || '')}" placeholder="auto" style="width:110px"></label>
+   <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="sedh" ${s.edhrec ? 'checked' : ''} style="min-height:auto"> Use EDHREC lists for Brawl opponents</label>
+   <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
+  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">About</h2>
+   <p style="margin:0 0 6px">mtgasim ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
+   <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out.</b> <a href="${esc(up.url)}">Get it</a>` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'}</p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
+   <button class="btn ghost" id="ssetup">Setup checklist</button></div>
+   <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
+  $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
+  $('#ssetup').onclick = () => show('setup');
+}
+
 async function poll() {
   try {
     STATUS = await api('/api/status');
@@ -180,7 +230,8 @@ async function poll() {
   setTimeout(poll, 2000);
 }
 poll();
-api('/api/decks').then(d => { DECKS = d; show('runs'); });
+Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; show(st.ready ? 'runs' : 'setup'); });
+api('/api/update').then(u => { if (u.newer) { const b = document.createElement('a'); b.href = u.url; b.textContent = 'Update ' + u.latest + ' available'; b.style.cssText = 'color:var(--hot);font-weight:700;margin-left:12px'; $('#job').after(b); } });
 </script>
 </body>
 </html>

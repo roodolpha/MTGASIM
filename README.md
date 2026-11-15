@@ -94,8 +94,8 @@ and your Arena name is never read. You're anonymous unless you pick `--name` and
 
 * Card names: Arena's own card database on your PC when present, otherwise [Scryfall](https://scryfall.com/docs/api).
 * Legality and colour identity: Scryfall.
-* Brawl opponent lists: the cards you saw each opponent play, topped up with [EDHREC](https://edhrec.com)'s
-  average deck for that commander.
+* Brawl opponent lists: the cards you saw each opponent play, optionally topped up with [EDHREC](https://edhrec.com)'s
+  average deck for that commander (off by default: turn it on in Settings or with `--edhrec`).
 
 ## Licence
 

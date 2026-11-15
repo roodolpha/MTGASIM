@@ -83,7 +83,7 @@ function playerTable(rows) {
 async function leaderboard() {
   const lb = await get(`/v1/leaderboard?format=${FMT}`);
   $("#app").innerHTML = `<h1 style="font-size:48px;font-weight:800;margin:12px 0 6px">Leaderboards</h1>
-  <p class="dim" style="margin:0 0 16px">Opted-in players, last 30 days, at least ${lb.min_games} games. The range is where their real win rate probably sits.</p>
+  <p class="dim" style="margin:0 0 16px">Opted-in players at ${esc(lb.min_rank || "Platinum")} and up, last 30 days, at least ${lb.min_games} games. Results are self-reported from players' own logs. The range is where their real win rate probably sits.</p>
   ${tabs()}<div class="panel" style="margin-top:16px">${playerTable(lb.players)}</div>`;
   bindTabs(leaderboard);
 }
@@ -142,6 +142,16 @@ async function players() {
   $("#f").onsubmit = (e) => { e.preventDefault(); location.hash = "#/player/" + encodeURIComponent($("#q").value.trim()); };
 }
 
+async function privacyPage() {
+  const r = await fetch("privacy.md").catch(() => null);
+  const md = r && r.ok ? await r.text() : "See docs/PRIVACY.md in the repo.";
+  // tiny markdown: headings, bold, italics, paragraphs, inline code
+  const html = esc(md).split(/\n\n+/).map((b) => b.startsWith("# ") ? `<h1 style="font-size:40px;font-weight:800">${b.slice(2)}</h1>`
+    : b.startsWith("## ") ? `<h2 style="font-size:24px;margin-top:20px">${b.slice(3)}</h2>` : `<p>${b}</p>`).join("")
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>").replace(/`(.+?)`/g, "<code>$1</code>");
+  $("#app").innerHTML = `<div class="panel" style="max-width:820px">${html}</div>`;
+}
+
 function apiPage() {
   const ex = ["/v1/meta?format=standard", "/v1/leaderboard?format=brawl&days=30&min=50", "/v1/matchups?format=historic&top=8", "/v1/players/NAME"];
   $("#app").innerHTML = `<h1 style="font-size:48px;font-weight:800;margin:12px 0 6px">API</h1>
@@ -151,7 +161,7 @@ function apiPage() {
 }
 
 const routes = [[/^#\/?$/, home], [/^#\/meta$/, metaPage], [/^#\/leaderboard$/, leaderboard], [/^#\/players$/, players],
-  [/^#\/player\/(.+)$/, (m) => playerPage(decodeURIComponent(m[1]))], [/^#\/api$/, apiPage]];
+  [/^#\/player\/(.+)$/, (m) => playerPage(decodeURIComponent(m[1]))], [/^#\/api$/, apiPage], [/^#\/privacy$/, privacyPage]];
 async function route() {
   const h = location.hash || "#/";
   document.querySelectorAll("nav.main a").forEach((a) => a.setAttribute("aria-current", h.startsWith(a.getAttribute("href")) ? "page" : "false"));

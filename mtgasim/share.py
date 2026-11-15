@@ -112,6 +112,13 @@ def build_payload(cfg, include_lists=False, log_paths=None):
     # --- real games
     logs = arena_log.find_logs(cfg.get("arena_log")) if log_paths is None else log_paths
     reader = arena_log.read_all(logs) if logs else arena_log.LogReader()
+    # rank before each game comes from the game tracker's history, when it has the game
+    ranks = {}
+    try:
+        tracked = json.loads((cfg.home / "tracker" / "matches.json").read_text(encoding="utf-8"))
+        ranks = {k: (v.get("rank_before") or {}).get("class") for k, v in tracked.items()}
+    except (OSError, ValueError):
+        pass
     raw = []
     for m in reader.matches.values():
         f = event_format(m.event)
@@ -137,6 +144,8 @@ def build_payload(cfg, include_lists=False, log_paths=None):
             "deck_colours": _colours(deck.main, ident, commander), "commander": commander,
             "opp_colours": _colours([n for n in opp if n], ident, o_commander) if opp else None,
             "opp_commander": o_commander,
+            "archetype": None if f.endswith("brawl") else C.archetype(deck.main, ident),
+            "rank": ranks.get(m.match_id),
         })
         if include_lists:
             decks_out[h] = {"hash": h, "format": f, "colours": matches[-1]["deck_colours"],
@@ -189,6 +198,8 @@ def build_payload(cfg, include_lists=False, log_paths=None):
                 "deck_colours": _colours(my.main, ident, commander), "commander": commander,
                 "opp_colours": _colours(od.main, ident, oc) if od else None, "opp_commander": oc,
                 "games": n, "wins": w, "draws": d,
+                "archetype": None if meta["format"].endswith("brawl") else C.archetype(my.main, ident),
+                "opp_archetype": None if meta["format"].endswith("brawl") or not od else C.archetype(od.main, ident),
             })
         if include_lists:
             decks_out[h] = {"hash": h, "format": meta["format"], "colours": _colours(my.main, ident, commander),

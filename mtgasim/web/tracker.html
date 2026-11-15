@@ -1200,14 +1200,7 @@ function swapPlan(){
   const deck = currentDeckIds(), names = new Map();
   deck.forEach(g=>names.set(card(g).name.split(' // ')[0], g));
   const used = new Set(), ranking = cutRanking(deck), plan = {};
-  const protect = new Set(['Zimone, Paradox Sculptor','Formation Breaker','Crux of the Theory','Greenhouse Propagator','Sword of Forge and Frontier','Thrashing Brontodon', // cards you've said earn their slot
-    // Zimone protection, removal/lockdown and the Kami combo pieces stay
-    'Snakeskin Veil',"Tamiyo's Safekeeping",'Counterspell','Cyclonic Rift','Witness Protection',"Kenrith's Transformation",
-    'Singing Bell Strike','Ringing Strike Mastery','Kami of Whispered Hopes','Bristly Bill, Spine Sower','Gogo, Master of Mimicry',
-    'Crushing Canopy','Pick Your Poison','Rapid Hybridization','Bite Down','Worldly Tutor',
-    // the speed plan needs every mana source
-    'Llanowar Elves','Elvish Mystic','Paradise Druid','Llanowar Loamspeaker','Great Forest Druid','Arcane Signet','Growth Spiral',"Nature's Lore",
-    'Vorinclex, Monstrous Raider']);
+  const protect = new Set((M.at(-1)?.my_commanders||[]).map(g=>card(g).name));   // never suggest cutting your commander
   const BASICS = new Set(['Forest','Island','Plains','Swamp','Mountain','Wastes']);
   (D.upgrades?.stages||[]).forEach(st=>st.cards.forEach(c=>protect.add(c)));  // never suggest cutting something from your own plan
   (D.upgrades?.stages||[]).forEach(st=>st.cards.forEach(c=>{
@@ -1746,7 +1739,7 @@ function decisions(m){
     const cheap = kept.filter(g=>!isLand(g) && (card(g).cmc||0)<=3).length;
     const mull = m.mulligans||0;
     let v, why;
-    if(lands>=3 && lands<=5 && (ramp>=1 || cheap>=2)){ v='good'; why=`${lands} lands, ${ramp} ramp and ${cheap} cheap plays. That's a hand that can cast Zimone on time.`; }
+    if(lands>=3 && lands<=5 && (ramp>=1 || cheap>=2)){ v='good'; why=`${lands} lands, ${ramp} ramp and ${cheap} cheap plays. That's a hand that can cast your commander on time.`; }
     else if(lands===2 && ramp>=1){ v=m.on_play?'question':'ok'; why=`2 lands plus ramp${m.on_play?' on the play':' on the draw'}. Keepable, but you need a land in the first couple of draws.`; }
     else if(lands<=1){ v='mistake'; why=`Only ${lands} land${lands===1?'':'s'}. Hands like this lose far more often than they win.`; }
     else if(lands>=6){ v='question'; why=`${lands} lands and only ${kept.length-lands} spell${kept.length-lands===1?'':'s'}. Likely to flood.`; }
@@ -2186,7 +2179,7 @@ function playbookFrom(gs, title){
   const zimTurn = m => { const tn = (m.timeline||[]).filter(t=>t.a==='me').map(t=>t.t); const c = (m.plays||[]).find(p=>p.side==='me' && p.k==='spell' && (m.my_commanders||[]).includes(p.g)); return c ? tn.indexOf(c.t)+1 : null; };
   const early = gs.filter(m=>{ const z = zimTurn(m); return z && z<=4; }), late = gs.filter(m=>!early.includes(m));
   const a = winsLosses(early), b2 = winsLosses(late);
-  facts.push(`Zimone cast by your turn 4: <b>${a[0]}–${a[1]}</b>. Later or never: <b>${b2[0]}–${b2[1]}</b>.`);
+  facts.push(`Commander cast by your turn 4: <b>${a[0]}–${a[1]}</b>. Later or never: <b>${b2[0]}–${b2[1]}</b>.`);
   const wiped = gs.filter(m=>(m.removals||[]).filter(r=>r.side==='me' && r.creature && r.by_side==='opp').reduce((acc,r)=>{acc[r.t]=(acc[r.t]||0)+1; return acc;},{}) && Object.values((m.removals||[]).filter(r=>r.side==='me' && r.creature && r.by_side==='opp').reduce((acc,r)=>{acc[r.t]=(acc[r.t]||0)+1; return acc;},{})).some(n=>n>=3));
   if(wiped.length){ const w = winsLosses(wiped); facts.push(`They wiped your board in <b>${wiped.length} of ${gs.length}</b> games (you went ${w[0]}–${w[1]} in those). ${brainCount(gs,'wipe-tapped')?`You tapped out while holding a counter ${brainCount(gs,'wipe-tapped')} time${brainCount(gs,'wipe-tapped')===1?'':'s'}.`:''}`); }
   const ctr = gs.filter(m=>(m.countered||[]).some(c=>c.side==='me'));
@@ -2280,7 +2273,7 @@ function wireSim(){
       if(i>=0 && inG){ alt = deck.slice(); alt[i] = isNaN(+inG) ? inG : +inG; }
     }
     const a = simDeck(deck, {onPlay:SIM.onPlay}), z = alt ? simDeck(alt, {onPlay:SIM.onPlay}) : null;
-    const rows = [['3 lands by your turn 3','lands3'],['4 mana for Zimone by turn 4','cmd4'],['…by turn 5','cmd5'],['Stuck on 2 lands or fewer on turn 4','screw',true],['Flood: 7+ lands in your first 12 cards','flood',true]];
+    const rows = [['3 lands by your turn 3','lands3'],['4 mana by turn 4','cmd4'],['…by turn 5','cmd5'],['Stuck on 2 lands or fewer on turn 4','screw',true],['Flood: 7+ lands in your first 12 cards','flood',true]];
     const p = v => Math.round(v*100)+'%';
     SIM.last = `<table><thead><tr><th></th><th class="num">Current deck</th>${z?`<th class="num">With ${esc(SIM.in)}</th><th class="num">Change</th>`:''}</tr></thead><tbody>
       ${rows.map(([lab,k,bad])=>{ const d = z ? z[k]-a[k] : 0; const good = bad ? d<0 : d>0;
@@ -2301,7 +2294,7 @@ function lessonsHtml(){
   const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3);
   if(!top.length) return `<div class="panel"><h3>This week's focus</h3><p>No repeated mistakes in your last ${wk.length} games. Keep it up.</p></div>`;
   const tips = {'attack-missed':'Swing when nothing on their side can kill your attacker and their board can\'t punish you.', 'block-skipped':'Block when your creature survives the hit. It\'s free life, and against lifelink it stops their gain too.',
-    'removal-held':'Use removal on the turn a big threat lands, not after it has hit you.', 'cmd-late':'Cast Zimone as soon as you have 4 mana with both colours.', 'ramp-first':'Ramp on turns 1–3 before anything else.',
+    'removal-held':'Use removal on the turn a big threat lands, not after it has hit you.', 'cmd-late':'Cast your commander as soon as you have the mana for it.', 'ramp-first':'Ramp on turns 1–3 before anything else.',
     'land':'Play a land every turn you can.', 'mana':'Spend spare mana, or keep it up on purpose for an instant.', 'attack-bad':'Don\'t attack into blockers that kill your creature without dying.',
     'attack-risky':'When their board can hit back hard, keep enough blockers home.', 'wipe-tapped':'Against black, white or control, keep counter mana up once your board can already win.',
     'overextend':'Hold a creature or two back when you\'re already ahead and they might have a wipe.', 'zim-double':'Spare {G}{U} at end of turn: double the counters with Zimone.',
@@ -2666,7 +2659,7 @@ const CHAPTERS = [
     ['Keep or mulligan?','Kept hands','Win rate by lands','Keep 7 vs mulligan','Mana problems','Your mana curve','Cast on curve','Turns you were short']],
   ['deck','Deck','Which versions and cards are pulling their weight.',
     ['Win rate when drawn','Deck versions','Card impact','Cards to consider cutting','Your cards: drawn','Your cards: win rate','Cards stuck in hand']],
-  ['commander','Commander','When Zimone lands, whether she survives, and how often you use her.',
+  ['commander','Commander','When your commander lands, whether it survives, and how often you use it.',
     ['Win rate by commander','Win rate by when your commander','Did your commander']],
   ['combat','Combat & interaction','Attacks, answers, and what keeps hurting you.',
     ['Decisions and results','Key moments','Most common mistakes','Your feedback','Play review','Recent misplays','Attack decisions','Recent attack mistakes','Interaction','Opponent cards that killed','Your creatures that died','Your biggest damage','What has hit you']],
