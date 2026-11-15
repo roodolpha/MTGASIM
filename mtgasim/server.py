@@ -51,17 +51,31 @@ class Jobs:
         return {k: v for k, v in j.items() if not k.startswith("_")} if j else None
 
 
+_SUMMARIES = {}   # results file -> (mtime, size, summary): big imported runs are only read once
+
+
+def _summary(path):
+    st = path.stat()
+    hit = _SUMMARIES.get(path)
+    if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
+        return hit[2]
+    s = stats.summary(runner.load_results(path))
+    _SUMMARIES[path] = (st.st_mtime, st.st_size, s)
+    return s
+
+
 def run_list(cfg):
     out = []
     rd = cfg.results_dir
-    for m in sorted(rd.glob("*.meta.json"), reverse=True)[:200]:
+    for m in sorted(rd.glob("*.meta.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:200]:
         try:
             meta = json.loads(m.read_text(encoding="utf-8"))
         except ValueError:
             continue
         res = rd / f"{meta['run']}.jsonl"
-        s = stats.summary(runner.load_results(res)) if res.exists() else None
+        s = _summary(res) if res.exists() else None
         out.append({**meta, "summary": s})
+    out.sort(key=lambda r: r.get("started") or 0, reverse=True)
     return out
 
 

@@ -178,9 +178,11 @@ class Optimiser:
     def report(self):
         acc = self.state["accepted"]
         lines = [f"{len(acc)} swap(s) accepted out of {len(self.state['tried'])} tested:"]
+        f = lambda v, fmt: "?" if v is None else format(v, fmt)
         for r in acc:
-            lines.append(f"  -{r['out']} +{r['in']}   confirm {100 * r['confirm']['diff']:+.1f} pts "
-                         f"(z {r['confirm']['z']:.2f}), hold-out {100 * r['holdout']['diff']:+.1f} pts")
+            c, h = r.get("confirm") or {}, r.get("holdout") or {}
+            lines.append(f"  -{r['out']} +{r['in']}   confirm {f(c.get('diff') and 100 * c['diff'], '+.1f')} pts "
+                         f"(z {f(c.get('z'), '.2f')}), hold-out {f(h.get('diff') and 100 * h['diff'], '+.1f')} pts")
         out = self.dir / "optimised.txt"
         out.write_text(self.state["deck"], encoding="utf-8")
         lines.append(f"Current list (Arena import format): {out}")

@@ -409,7 +409,7 @@ def main(argv=None):
     s.set_defaults(fn=cmd_optimise)
 
     s = sub.add_parser("serve", help="open the local dashboard")
-    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--port", type=int, default=8780)
     s.add_argument("--no-browser", action="store_true")
     s.set_defaults(fn=cmd_serve)
 
