@@ -1712,3 +1712,9 @@ def read_file(path, parser, start=0):
 
 
 # ------------------------------------------------------------------ live overlay
+
+def _log_size():
+    """Real length of Player.log. Windows can report a stale size for a file Arena has open,
+    so ask through an open handle instead of trusting the directory entry."""
+    with open(LOG, "rb") as f:
+        return f.seek(0, 2)
