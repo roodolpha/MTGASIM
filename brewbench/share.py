@@ -1,4 +1,4 @@
-"""Opt-in sharing with the public site. Nothing is sent unless you run `mtgasim share`.
+"""Opt-in sharing with the public site. Nothing is sent unless you run `brewbench share`.
 
 What goes up:
   * your real Arena games from the log: day, format, result, your deck's colours / commander and a hash of
@@ -7,7 +7,7 @@ What goes up:
   * your simulator runs, summarised per opponent deck: games, wins, draws, which AI.
   * your decklists, only if you pass --lists.
 Your Arena name is never read or sent. You're anonymous unless you pick a display name and --public.
-`mtgasim share --forget` deletes everything you've sent.
+`brewbench share --forget` deletes everything you've sent.
 """
 import hashlib
 import json
@@ -19,7 +19,7 @@ from collections import Counter
 from . import __version__, arena_log, cards as C, decks as D, runner
 from .optimiser import deck_hash
 
-DEFAULT_API = "https://api.mtgasim.example"   # replaced by the real address once the site is live
+DEFAULT_API = "https://api.brewbench.gg"   # replaced by the real address once the site is live
 
 
 def event_format(event: str):
@@ -54,7 +54,7 @@ class Client:
         self.api = (api or cfg.get("share_api") or DEFAULT_API).rstrip("/")
 
     def _req(self, method, path, body=None, auth=True):
-        headers = {"Content-Type": "application/json", "User-Agent": f"MTGASIM/{__version__}"}
+        headers = {"Content-Type": "application/json", "User-Agent": f"Brewbench/{__version__}"}
         if auth:
             headers["Authorization"] = f"Bearer {self.cfg.get('share_id')}:{self.cfg.get('share_key')}"
         data = json.dumps(body).encode() if body is not None else None

@@ -1,4 +1,4 @@
-package mtgasim;
+package brewbench;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +33,7 @@ import forge.view.TimeLimitedCodeBlock;
  *             "life":{"a":..,"b":..},"states":[...]}
  * "result" is from deck A's point of view. "states" holds the board at the end of every turn.
  *
- * This file is part of MTGASIM and is licensed under the GNU GPL v3 (it links against Forge, also GPL v3).
+ * This file is part of Brewbench and is licensed under the GNU GPL v3 (it links against Forge, also GPL v3).
  */
 public final class Sim {
     private static String q(String s) {
@@ -113,7 +113,7 @@ public final class Sim {
             rp.setPlayer(GamePlayerUtil.createAiPlayer(names[i], i, ""));
             players.add(rp);
         }
-        Match match = new Match(rules, players, "MTGASIM");
+        Match match = new Match(rules, players, "Brewbench");
         final String deckB = new File(args[2]).getName();
 
         try (Writer out = new OutputStreamWriter(new FileOutputStream(args[4], true), StandardCharsets.UTF_8)) {

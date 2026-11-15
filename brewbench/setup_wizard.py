@@ -1,5 +1,5 @@
-"""First-run setup, driven from the dashboard: find Arena's log, download Java and Forge into ~/.mtgasim,
-and point the config at them. Also the "is there a newer MTGASIM?" check."""
+"""First-run setup, driven from the dashboard: find Arena's log, download Java and Forge into ~/.brewbench,
+and point the config at them. Also the "is there a newer Brewbench?" check."""
 import json
 import os
 import platform
@@ -13,9 +13,9 @@ from pathlib import Path
 
 from . import __version__, arena_log, forge
 
-UA = {"User-Agent": f"MTGASIM/{__version__}", "Accept": "application/json"}
+UA = {"User-Agent": f"Brewbench/{__version__}", "Accept": "application/json"}
 FORGE_REPO = "Card-Forge/forge"
-APP_REPO = "roodolpha/MTGASIM"
+APP_REPO = "roodolpha/brewbench"
 JOBS = {}   # name -> {"state": "running|done|error", "done": bytes, "total": bytes, "error": str}
 
 

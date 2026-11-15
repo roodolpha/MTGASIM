@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 
 FORGE_VERSION = "2.0.16"   # the harness is built and tested against this Forge release
-HARNESS_JAR = Path(__file__).resolve().parent / "harness" / "mtgasim-harness.jar"   # shipped prebuilt
+HARNESS_JAR = Path(__file__).resolve().parent / "harness" / "brewbench-harness.jar"   # shipped prebuilt
 HARNESS_SRC = Path(__file__).resolve().parent.parent / "harness" / "src"            # source (GPL)
 
 JVM_FLAGS = ["-Xmx1200m", "-XX:+UseSerialGC", "-XX:ActiveProcessorCount=2", "-XX:CICompilerCount=2",
@@ -23,7 +23,7 @@ def forge_jar(forge_dir) -> Path:
     if not jars:
         raise SetupError(f"No Forge desktop jar in {forge_dir}. Download Forge {FORGE_VERSION} "
                          "(https://github.com/Card-Forge/forge/releases), unpack it, and point "
-                         "`mtgasim setup --forge-dir` at that folder.")
+                         "`brewbench setup --forge-dir` at that folder.")
     return jars[-1]
 
 
@@ -139,7 +139,7 @@ def build_harness(forge_dir, javac=None) -> Path:
 def command(java, forge_dir, fmt, deck_a, deck_b, games, out, timeout=180, seed=None):
     sep = ";" if os.name == "nt" else ":"
     cp = str(forge_jar(forge_dir)) + sep + str(HARNESS_JAR)
-    cmd = [java] + JVM_FLAGS + ["-cp", cp, "mtgasim.Sim", fmt.forge, str(deck_a), str(deck_b),
+    cmd = [java] + JVM_FLAGS + ["-cp", cp, "brewbench.Sim", fmt.forge, str(deck_a), str(deck_b),
                                 str(games), str(out), str(timeout)]
     if seed is not None:
         cmd.append(str(seed))

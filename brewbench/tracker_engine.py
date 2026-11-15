@@ -1,8 +1,8 @@
-"""Game tracking for MTGASIM: reads MTG Arena's Player.log and keeps a detailed record of every game you play
+"""Game tracking for Brewbench: reads MTG Arena's Player.log and keeps a detailed record of every game you play
 (per-turn life, board, hand, plays, draws, removals, damage, combat), then works out the stats the dashboard shows.
 
 Ported from the author's private Arena Tracker, minus everything that predicts or advises during a game.
-MTGASIM only reads the log: no overlay, no memory reading, no input to the game.
+Brewbench only reads the log: no overlay, no memory reading, no input to the game.
 """
 import csv
 import glob
@@ -25,7 +25,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 
 VERSION = 3
-HERE = os.environ.get("MTGASIM_TRACKER_DIR") or os.path.join(os.path.expanduser("~"), ".mtgasim", "tracker")
+HERE = os.environ.get("BREWBENCH_TRACKER_DIR") or os.path.join(os.path.expanduser("~"), ".brewbench", "tracker")   # set by brewbench.tracker
 os.makedirs(HERE, exist_ok=True)
 LOG_DIR = os.environ.get("ARENA_LOG_DIR") or os.path.join(
     os.path.expanduser("~"), "AppData", "LocalLow", "Wizards Of The Coast", "MTGA")
@@ -1705,7 +1705,7 @@ def build_outputs(store, cards):
             "wildcards": wildcards, "decks": decks, "current_deck": cur_id,
             "upgrade_cards": upgrade_cards, "abilities": abil_info,
             "winmodel": model, "wp_labels": WP_LABELS, "threats": threats, "craft": craft,
-            # private-tracker features that aren't in MTGASIM, kept empty so the page renders without them
+            # private-tracker features that aren't in Brewbench, kept empty so the page renders without them
             "videos": {}, "compilations": [], "replays": {}, "lan_url": "", "feedback": [], "nn": {}, "net": None}
     save_json(DATA_FILE, data)
     wins = sum(r["result"] == "Win" for r in out)

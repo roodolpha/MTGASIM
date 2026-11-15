@@ -8,7 +8,7 @@
          IgnorableNamespaces="uap desktop rescap">
   <Identity Name="PARTNER_CENTER_PACKAGE_NAME" Publisher="PARTNER_CENTER_PUBLISHER" Version="APP_VERSION.0" ProcessorArchitecture="x64"/>
   <Properties>
-    <DisplayName>mtgasim</DisplayName>
+    <DisplayName>Brewbench</DisplayName>
     <PublisherDisplayName>PARTNER_CENTER_PUBLISHER_DISPLAY_NAME</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -17,13 +17,13 @@
   </Dependencies>
   <Resources><Resource Language="en-gb"/></Resources>
   <Applications>
-    <Application Id="mtgasim" Executable="mtgasim.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="mtgasim" Description="Simulate your MTG Arena decks and track your games."
+    <Application Id="brewbench" Executable="brewbench.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Brewbench" Description="Simulate your MTG Arena decks and track your games."
                           BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png"/>
       <Extensions>
-        <desktop:Extension Category="windows.startupTask" Executable="mtgasim.exe" EntryPoint="Windows.FullTrustApplication">
-          <desktop:StartupTask TaskId="mtgasimStartup" Enabled="false" DisplayName="mtgasim (record Arena games)"/>
+        <desktop:Extension Category="windows.startupTask" Executable="brewbench.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="brewbenchStartup" Enabled="false" DisplayName="brewbench (record Arena games)"/>
         </desktop:Extension>
       </Extensions>
     </Application>

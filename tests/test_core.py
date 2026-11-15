@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from mtgasim import arena_log, decks as D, formats, runner, stats
+from brewbench import arena_log, decks as D, formats, runner, stats
 
 ARENA_TEXT = """Commander
 1 Zimone, Mightiest Wizard (DSK) 230

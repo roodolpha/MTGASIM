@@ -1,4 +1,4 @@
-"""The Arena formats MTGASIM can simulate, and what each one means for Forge and for deck checks."""
+"""The Arena formats Brewbench can simulate, and what each one means for Forge and for deck checks."""
 from dataclasses import dataclass
 
 

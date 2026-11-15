@@ -1,12 +1,12 @@
-"""mtgasim: simulate your MTG Arena decks with Forge's AI.
+"""brewbench: simulate your MTG Arena decks with Forge's AI.
 
-  mtgasim setup --forge-dir "C:\\Games\\Forge"
-  mtgasim deck import my_deck.txt --name "Mono Red"
-  mtgasim deck from-log
-  mtgasim gauntlet add standard meta_deck.txt
-  mtgasim run "Mono Red" --format standard --games 500
-  mtgasim compare "Mono Red" "Mono Red v2" --format standard --games 1000
-  mtgasim report
+  brewbench setup --forge-dir "C:\\Games\\Forge"
+  brewbench deck import my_deck.txt --name "Mono Red"
+  brewbench deck from-log
+  brewbench gauntlet add standard meta_deck.txt
+  brewbench run "Mono Red" --format standard --games 500
+  brewbench compare "Mono Red" "Mono Red v2" --format standard --games 1000
+  brewbench report
 """
 import argparse
 import json
@@ -42,7 +42,7 @@ def resolve_opponents(cfg, fmt, vs):
         opps = gauntlet.list_decks(cfg.gauntlet_dir(fmt.key))
         if not opps:
             raise SystemExit(f"Your {fmt.name} gauntlet is empty. Add decks with: "
-                             f"mtgasim gauntlet add {fmt.key} <decklist>")
+                             f"brewbench gauntlet add {fmt.key} <decklist>")
         return opps
     out = []
     for v in vs:
@@ -90,12 +90,12 @@ def cmd_setup(cfg, a):
 
 def cmd_doctor(cfg, a):
     ok = True
-    print(f"MTGASIM {__version__}   files in {cfg.home}")
+    print(f"Brewbench {__version__}   files in {cfg.home}")
     try:
         fd = cfg.forge_dir
         v = forge.forge_version(fd)
         note = "" if v == forge.FORGE_VERSION else f"  (harness was built for {forge.FORGE_VERSION}; " \
-                                                   "run `mtgasim setup --build-harness` if games error)"
+                                                   "run `brewbench setup --build-harness` if games error)"
         print(f"  Forge     {v} at {fd}{note}")
         profs = forge.ai_profiles(fd)
         print(f"  AI        {cfg.get('ai_profile', 'Default')}   (available: {', '.join(profs) or '?'})")
@@ -163,7 +163,7 @@ def cmd_deck_from_log(cfg, a):
     logs = arena_log.find_logs(cfg.get("arena_log"))
     if not logs:
         raise SystemExit("Couldn't find Arena's Player.log. Turn on Detailed Logs in Arena, play a game, "
-                         "or pass the path with `mtgasim setup --arena-log`.")
+                         "or pass the path with `brewbench setup --arena-log`.")
     r = arena_log.read_all(logs)
     book = cards.CardBook(cfg.cache_dir / "cards.json")
     latest = {}
@@ -185,7 +185,7 @@ def cmd_deck_from_log(cfg, a):
         print(f"Saved {d.name} -> {path}")
     book.save()
     if not picks:
-        print("\nSave one with: mtgasim deck from-log --pick <number>   (or --all)")
+        print("\nSave one with: brewbench deck from-log --pick <number>   (or --all)")
 
 
 def cmd_gauntlet_add(cfg, a):
@@ -341,23 +341,23 @@ def cmd_report(cfg, a):
             s = stats.summary(runner.load_results(rd / f"{d['run']}.jsonl")) if (rd / f"{d['run']}.jsonl").exists() else None
             print(f"  {d['run']}  {d['label']:<28} {d['format']:<10} "
                   + (f"{pct(s['win_rate'])} over {s['games']}" if s else "no games"))
-        print("\nDetail: mtgasim report <run id>")
+        print("\nDetail: brewbench report <run id>")
         return
     games = runner.load_results(rd / f"{a.run}.jsonl")
     print_summary(a.run, games)
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="mtgasim", description="Simulate your MTG Arena decks with Forge's AI.")
+    p = argparse.ArgumentParser(prog="brewbench", description="Simulate your MTG Arena decks with Forge's AI.")
     p.add_argument("--version", action="version", version=__version__)
-    p.add_argument("--home", help="where MTGASIM keeps its files (default ~/.mtgasim)")
+    p.add_argument("--home", help="where Brewbench keeps its files (default ~/.brewbench)")
     sub = p.add_subparsers(dest="cmd", required=True)
     fmt_help = "format: " + ", ".join(formats.FORMATS)
 
-    s = sub.add_parser("setup", help="point MTGASIM at Forge and Java")
+    s = sub.add_parser("setup", help="point Brewbench at Forge and Java")
     s.add_argument("--forge-dir")
     s.add_argument("--java")
-    s.add_argument("--ai", help="Forge AI profile (see `mtgasim doctor`)")
+    s.add_argument("--ai", help="Forge AI profile (see `brewbench doctor`)")
     s.add_argument("--instances", type=int, help="games to run at once")
     s.add_argument("--arena-log")
     s.add_argument("--build-harness", action="store_true", help="recompile the Java harness (needs a JDK)")

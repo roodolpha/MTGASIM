@@ -139,7 +139,7 @@ def diagnostics_zip(cfg):
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         safe = {k: v for k, v in cfg.data.items() if k not in ("share_key", "share_id")}
         z.writestr("config.json", json.dumps(safe, indent=1))
-        info = {"mtgasim": __version__, "python": platform.python_version(), "os": platform.platform()}
+        info = {"brewbench": __version__, "python": platform.python_version(), "os": platform.platform()}
         try:
             info["setup"] = setup_wizard.status(cfg)
         except Exception as e:
@@ -169,7 +169,7 @@ def make_handler(cfg, jobs):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             if ctype == "application/zip":
-                self.send_header("Content-Disposition", 'attachment; filename="mtgasim-diagnostics.zip"')
+                self.send_header("Content-Disposition", 'attachment; filename="brewbench-diagnostics.zip"')
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
@@ -292,7 +292,7 @@ def serve(cfg, port=8780, open_browser=True, track=True):
         httpd = _Server(("127.0.0.1", port), make_handler(cfg, jobs))
     except OSError:
         raise SystemExit(f"Port {port} is already in use (the dashboard may already be open: try http://127.0.0.1:{port}/). "
-                         f"Or pick another with: mtgasim serve --port <number>")
+                         f"Or pick another with: brewbench serve --port <number>")
     url = f"http://127.0.0.1:{port}/"
     print(f"Dashboard at {url}  (Ctrl+C to stop)")
     if open_browser:

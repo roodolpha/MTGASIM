@@ -1,5 +1,5 @@
 """Reads MTG Arena's Player.log: the decks you've saved or queued with, and the matches you've played
-(your deck, the opponent's cards you saw, the result). Reading the log is all MTGASIM does with Arena:
+(your deck, the opponent's cards you saw, the result). Reading the log is all Brewbench does with Arena:
 it never touches the game client or its memory.
 
 Arena only writes the detail we need when "Detailed Logs (Plugin Support)" is on

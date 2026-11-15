@@ -1,5 +1,5 @@
-// mtgasim public site: plain JS, reads the public API, no build step.
-const API = window.MTGASIM_API;
+// brewbench public site: plain JS, reads the public API, no build step.
+const API = window.Brewbench_API;
 const FORMATS = [["brawl", "Brawl"], ["standard", "Standard"], ["historic", "Historic"], ["standardbrawl", "Standard Brawl"], ["timeless", "Timeless"], ["alchemy", "Alchemy"]];
 const NAMES = { W: "Mono-White", U: "Mono-Blue", B: "Mono-Black", R: "Mono-Red", G: "Mono-Green", C: "Colourless",
   WU: "Azorius", UB: "Dimir", BR: "Rakdos", RG: "Gruul", WG: "Selesnya", GW: "Selesnya", WB: "Orzhov", UR: "Izzet", BG: "Golgari", WR: "Boros", RW: "Boros", UG: "Simic",
@@ -65,7 +65,7 @@ async function home() {
    ${playerTable(lb.players.slice(0, 6))}</div>
    <div class="cta"><div style="display:flex;flex-direction:column;gap:10px"><h2>Play your deck 1,000 times before you craft that mythic.</h2>
    <p style="margin:0;font-size:17px">The sim runs your list against the decks you actually face, on your own PC, overnight. Then it tells you if that swap actually helped or if you just got lucky.</p></div>
-   <div><a class="pill" href="https://github.com/roodolpha/MTGASIM">Download it, it's free</a></div></div></section>`;
+   <div><a class="pill" href="https://github.com/roodolpha/brewbench">Download it, it's free</a></div></div></section>`;
   bindTabs(home);
 }
 
@@ -157,7 +157,7 @@ function apiPage() {
   $("#app").innerHTML = `<h1 style="font-size:48px;font-weight:800;margin:12px 0 6px">API</h1>
   <p>Everything on this site comes from a free, open JSON API. No key needed; please cache (responses are good for 5 minutes).</p>
   <div class="panel">${ex.map((e) => `<p><code>GET ${esc(API + e)}</code></p>`).join("")}
-  <p class="dim">Full docs: <a href="https://github.com/roodolpha/MTGASIM/blob/main/docs/API.md">docs/API.md</a></p></div>`;
+  <p class="dim">Full docs: <a href="https://github.com/roodolpha/brewbench/blob/main/docs/API.md">docs/API.md</a></p></div>`;
 }
 
 const routes = [[/^#\/?$/, home], [/^#\/meta$/, metaPage], [/^#\/leaderboard$/, leaderboard], [/^#\/players$/, players],

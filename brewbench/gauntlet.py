@@ -1,7 +1,7 @@
 """Opponent decks to test against.
 
 A gauntlet is a folder of .dck files (gauntlets/<format>/). You can fill it three ways:
-  * drop in decklists yourself (Arena export text or .dck) with `mtgasim gauntlet add`
+  * drop in decklists yourself (Arena export text or .dck) with `brewbench gauntlet add`
   * Brawl: build one deck per commander you've faced, from your Arena log (cards you saw them play,
     optionally topped up with EDHREC's average list for that commander: off unless you turn it on)
   * later phases: meta decklists from public sources (see docs/ROADMAP.md)
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import decks as D
 
-UA = {"User-Agent": "MTGASIM/0.1 (+https://github.com/roodolpha/MTGASIM)", "Accept": "application/json"}
+UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/brewbench)", "Accept": "application/json"}
 BASIC_FOR = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
 

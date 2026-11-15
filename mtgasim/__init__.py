@@ -1,2 +1,2 @@
-"""MTGASIM: simulate MTG Arena decks with Forge's AI."""
-__version__ = "0.3.0"
+"""Old name of Brewbench, kept so `python -m mtgasim` and older shortcuts keep working."""
+from brewbench import __version__  # noqa: F401

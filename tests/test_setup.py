@@ -1,8 +1,8 @@
 import shutil
 import tarfile
 
-from mtgasim import setup_wizard as S
-from mtgasim.config import Config
+from brewbench import setup_wizard as S
+from brewbench.config import Config
 
 
 def test_install_forge_unpacks_and_configures(tmp_path, monkeypatch):

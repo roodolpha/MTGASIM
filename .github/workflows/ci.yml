@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install pytest pyflakes
-      - run: python -m pyflakes mtgasim
+      - run: python -m pyflakes brewbench
         continue-on-error: true
       - run: python -m pytest -q tests
   server:

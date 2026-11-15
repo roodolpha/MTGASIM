@@ -1,9 +1,9 @@
-# mtgasim public API
+# Brewbench public API
 
 Free, open, no key. JSON over HTTPS. Responses are cached for 5 minutes, so polling faster than that gets you
 nothing new. CORS is open: call it straight from a browser.
 
-Base URL: `https://api.mtgasim.example` (placeholder until the site launches).
+Base URL: `https://api.brewbench.gg` (placeholder until the site launches).
 
 Win rates are fractions (0.55 = 55%). Draws count as half a win. `ci95` is a 95% Wilson interval: where the
 true win rate probably sits given the number of games. Brawl formats are grouped by commander; constructed

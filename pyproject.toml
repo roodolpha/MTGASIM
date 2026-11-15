@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mtgasim"
-version = "0.3.0"
+name = "brewbench"
+version = "0.4.0"
 description = "Simulate your MTG Arena decks against a gauntlet using Forge's AI"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
@@ -12,10 +12,11 @@ requires-python = ">=3.9"
 dependencies = []
 
 [project.scripts]
-mtgasim = "mtgasim.cli:main"
+brewbench = "brewbench.cli:main"
+mtgasim = "brewbench.cli:main"   # old name
 
 [tool.setuptools]
-packages = ["mtgasim"]
+packages = ["brewbench", "mtgasim"]
 
 [tool.setuptools.package-data]
-mtgasim = ["harness/*.jar", "web/*.html"]
+brewbench = ["harness/*.jar", "web/*.html"]

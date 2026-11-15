@@ -1,6 +1,6 @@
 """Watches Arena's Player.log and keeps your game history and dashboard stats up to date.
 
-Runs inside `mtgasim serve` (or on its own with `mtgasim track`). Data lives in ~/.mtgasim/tracker:
+Runs inside `brewbench serve` (or on its own with `brewbench track`). Data lives in ~/.brewbench/tracker:
 matches.json (every game), decks.json (every deck version), wildcards.json, upgrades.json (your plan),
 dashboard_data.json (what the dashboard reads)."""
 import os
@@ -13,7 +13,7 @@ STATE = {"status": "not started", "games": 0, "last": None, "error": None}
 
 
 def _engine(cfg):
-    os.environ["MTGASIM_TRACKER_DIR"] = str(cfg.home / "tracker")
+    os.environ["BREWBENCH_TRACKER_DIR"] = str(cfg.home / "tracker")
     from . import tracker_engine as E
     log_path = cfg.get("arena_log")
     if log_path:
@@ -27,7 +27,7 @@ def _engine(cfg):
 
 
 def import_old_tracker(cfg, src):
-    """Copy an Arena Tracker folder's history (matches, decks, wildcards, plan, card cache) into MTGASIM."""
+    """Copy an Arena Tracker folder's history (matches, decks, wildcards, plan, card cache) into Brewbench."""
     dst = cfg.home / "tracker"
     dst.mkdir(parents=True, exist_ok=True)
     copied = []

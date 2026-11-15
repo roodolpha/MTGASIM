@@ -1,7 +1,7 @@
 import random
 
-from mtgasim import decks as D, formats, optimiser, stats
-from mtgasim.config import Config
+from brewbench import decks as D, formats, optimiser, stats
+from brewbench.config import Config
 
 
 def fake_games(deck, opps, games, seed):

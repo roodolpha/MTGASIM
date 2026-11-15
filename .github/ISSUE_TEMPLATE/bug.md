@@ -10,4 +10,4 @@ labels: bug
 
 **How to make it happen again** (format, deck, what you clicked)
 
-**Diagnostics**: in mtgasim, Settings > Download diagnostics, then drag the zip in here.
+**Diagnostics**: in brewbench, Settings > Download diagnostics, then drag the zip in here.

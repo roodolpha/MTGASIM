@@ -5,7 +5,7 @@ import importlib
 import os
 from pathlib import Path
 
-from mtgasim import arena_log
+from brewbench import arena_log
 
 FIXTURE = Path(__file__).parent / "fixtures" / "real_match.log.gz"
 
@@ -29,8 +29,8 @@ def test_simple_reader_finds_the_game():
 
 
 def test_tracker_records_the_full_game(tmp_path):
-    os.environ["MTGASIM_TRACKER_DIR"] = str(tmp_path)
-    import mtgasim.tracker_engine as E
+    os.environ["BREWBENCH_TRACKER_DIR"] = str(tmp_path)
+    import brewbench.tracker_engine as E
     E = importlib.reload(E)
     store = {}
     p = E.MatchParser(store, {})

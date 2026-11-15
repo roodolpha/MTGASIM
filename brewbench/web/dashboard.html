@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MTGASIM</title>
+<title>Brewbench</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
 <style>
@@ -57,7 +57,7 @@ textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:
 </head>
 <body>
 <header>
-<div class="logo">mtga<span>sim</span></div>
+<div class="logo">brew<span>bench</span></div>
 <nav aria-label="Sections">
 <a href="/tracker" style="min-height:44px;display:inline-flex;align-items:center;padding:0 14px;color:var(--text);font-weight:600;text-decoration:none">My games</a>
 <button data-view="runs">Runs</button>
@@ -140,7 +140,7 @@ async function decks() {
   <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></div>
   <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Gauntlets</h2>
   ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(k)}</b> <span class="dim">${v.length ? esc(v.join(', ')) : 'empty'}</span></p>`).join('')}
-  <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>mtgasim gauntlet add standard decks_folder</code></p></div></div>`;
+  <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>brewbench gauntlet add standard decks_folder</code></p></div></div>`;
   $('#dsave').onclick = async () => {
     const r = await api('/api/decks', {name: $('#dname').value, list: $('#dlist').value});
     $('#dmsg').textContent = r.error ? r.error : 'Saved (' + r.cards + ' cards)';
@@ -150,7 +150,7 @@ async function decks() {
 
 async function optimiser() {
   const list = await api('/api/optimiser');
-  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>mtgasim optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
+  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>brewbench optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
   $('#main').innerHTML = list.map(o => `<div class="panel" style="margin-bottom:20px"><h2 style="font-size:24px">${esc(o.deck)}</h2>
   <p class="dim" style="margin:4px 0 12px">${o.accepted.length} swap${o.accepted.length === 1 ? '' : 's'} kept out of ${o.tested} tested</p>
   <table><thead><tr><th>Swap</th><th>Got to</th><th class="n">Difference</th><th>Kept?</th></tr></thead><tbody>
@@ -212,7 +212,7 @@ async function settings() {
    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="sedh" ${s.edhrec ? 'checked' : ''} style="min-height:auto"> Use EDHREC lists for Brawl opponents</label>
    <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
   <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">About</h2>
-   <p style="margin:0 0 6px">mtgasim ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
+   <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
    <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out.</b> <a href="${esc(up.url)}">Get it</a>` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'}</p>
    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
    <button class="btn ghost" id="ssetup">Setup checklist</button></div>
