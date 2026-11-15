@@ -14,10 +14,11 @@ from pathlib import Path
 def default_log_paths():
     home = Path.home()
     return [
-        home / "AppData" / "LocalLow" / "Wizards Of The Coast" / "MTGA" / "Player.log",          # Windows
-        home / "AppData" / "LocalLow" / "Wizards Of The Coast" / "MTGA" / "Player-prev.log",
-        home / "Library" / "Logs" / "Wizards Of The Coast" / "MTGA" / "Player.log",               # macOS
-        home / "Library" / "Logs" / "Wizards Of The Coast" / "MTGA" / "Player-prev.log",
+        # previous session first, current last: callers that want "the" log take the last one
+        home / "AppData" / "LocalLow" / "Wizards Of The Coast" / "MTGA" / "Player-prev.log",     # Windows
+        home / "AppData" / "LocalLow" / "Wizards Of The Coast" / "MTGA" / "Player.log",
+        home / "Library" / "Logs" / "Wizards Of The Coast" / "MTGA" / "Player-prev.log",          # macOS
+        home / "Library" / "Logs" / "Wizards Of The Coast" / "MTGA" / "Player.log",
     ]
 
 
