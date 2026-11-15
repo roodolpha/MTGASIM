@@ -71,3 +71,54 @@ def compare(games_a, games_b):
 def games_needed(diff=0.03, base=0.5, z=1.96):
     """Roughly how many games per deck it takes to tell two decks apart by `diff`."""
     return math.ceil(2 * z * z * base * (1 - base) / (diff * diff))
+
+
+def _points(g):
+    return {"Win": 1.0, "Draw": 0.5, "Loss": 0.0}.get(g.get("result"))
+
+
+def paired(games_a, games_b):
+    """Compare two decks played on the same seeds: game i of A is matched with game i of B ("pair" key).
+    Each pair cancels out the shuffle and opponent, so far fewer games are needed than an unpaired test.
+    Returns the mean difference (A - B), its z-score and a one-sided p-value (small = A is better)."""
+    b_by = {g["pair"]: _points(g) for g in games_b if g.get("pair") and _points(g) is not None}
+    diffs = [_points(g) - b_by[g["pair"]] for g in games_a
+             if g.get("pair") in b_by and _points(g) is not None]
+    n = len(diffs)
+    if n < 2:
+        return {"n": n, "diff": None, "z": None, "p_value": None}
+    mean = sum(diffs) / n
+    var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
+    se = math.sqrt(var / n) or 1e-9
+    z = mean / se
+    return {"n": n, "diff": mean, "z": z, "p_value": 0.5 * math.erfc(z / math.sqrt(2)),
+            "changed": sum(1 for d in diffs if d != 0)}
+
+
+def card_presence(games, side="a"):
+    """For each permanent that reached the battlefield: win rate in games where it did vs games where it didn't.
+    Only permanents show up (instants and sorceries never sit on the battlefield), and it's correlation,
+    not cause: cheap cards land more often, so treat it as a hint for what to test, nothing more."""
+    seen_in = {}
+    pts = []
+    for i, g in enumerate(games):
+        p = _points(g)
+        if p is None:
+            continue
+        pts.append(p)
+        names = set()
+        for st in g.get("states") or []:
+            for perm in (st.get(side) or {}).get("perms", []):
+                if not perm[5]:   # tokens aren't deck cards
+                    names.add(perm[0])
+        for n in names:
+            seen_in.setdefault(n, []).append(p)
+    total, n_all = sum(pts), len(pts)
+    out = {}
+    for name, ps in seen_in.items():
+        k = len(ps)
+        if k == n_all:
+            continue
+        on, off = sum(ps) / k, (total - sum(ps)) / (n_all - k)
+        out[name] = {"games_seen": k, "win_seen": on, "win_not_seen": off, "delta": on - off}
+    return out

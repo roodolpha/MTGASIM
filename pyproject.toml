@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mtgasim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Simulate your MTG Arena decks against a gauntlet using Forge's AI"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
@@ -18,4 +18,4 @@ mtgasim = "mtgasim.cli:main"
 packages = ["mtgasim"]
 
 [tool.setuptools.package-data]
-mtgasim = ["harness/*.jar"]
+mtgasim = ["harness/*.jar", "web/*.html"]

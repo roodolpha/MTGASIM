@@ -9,7 +9,9 @@
   mtgasim report
 """
 import argparse
+import json
 import sys
+import time
 from pathlib import Path
 
 from . import __version__, decks as D, formats, forge, gauntlet, runner, stats
@@ -188,8 +190,9 @@ def cmd_deck_from_log(cfg, a):
 
 def cmd_gauntlet_add(cfg, a):
     fmt = formats.get(a.format)
-    for src in a.source:
-        path, deck = gauntlet.add(cfg.gauntlet_dir(fmt.key), src, a.name if len(a.source) == 1 else None)
+    srcs = gauntlet.expand_sources(a.source)
+    for src in srcs:
+        path, deck = gauntlet.add(cfg.gauntlet_dir(fmt.key), src, a.name if len(srcs) == 1 else None)
         print(f"Added {deck.name} ({deck.size} cards) to the {fmt.name} gauntlet")
 
 
@@ -253,12 +256,71 @@ def cmd_compare(cfg, a):
         print(f"  Too close to call. Telling a gap this size apart takes about {need} games per deck.")
 
 
+def cmd_optimise(cfg, a):
+    from . import optimiser
+    fmt = formats.get(a.format)
+    deck = resolve_deck(cfg, a.deck)
+    opps = resolve_opponents(cfg, fmt, a.vs)
+    pool = []
+    for src in a.pool or []:
+        p = Path(src)
+        if p.exists():
+            d = D.load(p)
+            pool += list(d.main) + list(d.side)
+        else:
+            pool.append(src)
+    if not pool:
+        d = D.read_dck(deck)
+        pool = list(d.side)
+    if not pool:
+        raise SystemExit("Give cards to try with --pool (a list file, a deck, or card names), "
+                         "or put them in the deck's sideboard.")
+    opt = optimiser.Optimiser(cfg, fmt, deck, opps, pool, outs=a.cut, protect=a.keep or (), instances=a.instances,
+                              screen=a.screen, confirm=a.confirm, holdout=a.holdout)
+    print(f"Optimising {deck.stem}: {len(pool)} card(s) to try, {len(opt.train)} tuning opponents, "
+          f"{len(opt.hold)} held out.")
+    until = time.time() + a.hours * 3600 if a.hours else None
+    print(opt.run(max_tests=a.max_tests, until=until))
+
+
+def cmd_serve(cfg, a):
+    from . import server
+    server.serve(cfg, a.port, open_browser=not a.no_browser)
+
+
+def cmd_share(cfg, a):
+    from . import share
+    c = share.Client(cfg, a.api)
+    if a.forget:
+        if not c.registered:
+            raise SystemExit("Nothing to forget: you haven't shared anything from this PC.")
+        c.forget()
+        print("Done: everything you uploaded has been deleted from the site, and this PC is unlinked.")
+        return
+    if a.preview:
+        p = share.build_payload(cfg, a.lists)
+        print(json.dumps({k: v[:3] for k, v in p.items()}, indent=1))
+        print(f"\n{len(p['matches'])} real games, {len(p['sims'])} simulator summaries, {len(p['decks'])} lists would be sent.")
+        return
+    if not c.registered:
+        if not a.yes:
+            print(share.__doc__)
+            if input("Share? [y/N] ").strip().lower() != "y":
+                return
+        c.register(a.name, a.public)
+        print("Linked this PC" + (f" as {a.name}" + (" (public)" if a.public else " (hidden)") if a.name else " anonymously"))
+    elif a.name is not None or a.public:
+        c.update(a.name or cfg.get("share_name"), a.public)
+    r = c.upload(share.build_payload(cfg, a.lists))
+    print(f"Sent {r['matches']} real games, {r['sims']} simulator summaries, {r['decks']} lists"
+          + (f" ({r['rejected']} rows skipped)" if r["rejected"] else "") + ".")
+
+
 def cmd_report(cfg, a):
     rd = cfg.results_dir
     metas = sorted(rd.glob("*.meta.json"))
     if not metas:
         raise SystemExit("No runs yet.")
-    import json
     if not a.run:
         for m in metas[-15:]:
             d = json.loads(m.read_text(encoding="utf-8"))
@@ -330,6 +392,36 @@ def main(argv=None):
         s.add_argument("--instances", "-j", type=int)
         s.add_argument("--seed", type=int)
         s.set_defaults(fn=fn)
+
+    s = sub.add_parser("optimise", aliases=["optimize"], help="test one-card swaps and keep the ones that help")
+    s.add_argument("deck")
+    s.add_argument("--format", "-f", required=True, help=fmt_help)
+    s.add_argument("--pool", nargs="*", help="cards to try: a list file, a deck file, or names (default: the deck's sideboard)")
+    s.add_argument("--cut", nargs="*", help="cards to try cutting first")
+    s.add_argument("--keep", nargs="*", help="cards never to cut")
+    s.add_argument("--vs", nargs="*")
+    s.add_argument("--instances", "-j", type=int)
+    s.add_argument("--max-tests", type=int, help="stop after this many swaps")
+    s.add_argument("--hours", type=float, help="stop after this long")
+    s.add_argument("--screen", type=int, default=200, help="games per screening run")
+    s.add_argument("--confirm", type=int, default=800, help="games per confirming run")
+    s.add_argument("--holdout", type=int, default=400, help="games per hold-out run")
+    s.set_defaults(fn=cmd_optimise)
+
+    s = sub.add_parser("serve", help="open the local dashboard")
+    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--no-browser", action="store_true")
+    s.set_defaults(fn=cmd_serve)
+
+    s = sub.add_parser("share", help="opt in: send your results to the public site")
+    s.add_argument("--name", help="display name on the site (leave out to stay anonymous)")
+    s.add_argument("--public", action="store_true", help="show you on leaderboards (needs --name)")
+    s.add_argument("--lists", action="store_true", help="also share your decklists")
+    s.add_argument("--preview", action="store_true", help="show what would be sent, send nothing")
+    s.add_argument("--forget", action="store_true", help="delete everything you've sent")
+    s.add_argument("--yes", "-y", action="store_true")
+    s.add_argument("--api", help=argparse.SUPPRESS)
+    s.set_defaults(fn=cmd_share)
 
     s = sub.add_parser("report", help="past runs")
     s.add_argument("run", nargs="?")

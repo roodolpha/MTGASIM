@@ -29,6 +29,18 @@ def list_decks(folder):
     return sorted(Path(folder).glob("*.dck"))
 
 
+def expand_sources(sources):
+    """Files, folders (every .txt/.dck inside) or pasted text."""
+    out = []
+    for s in sources:
+        p = Path(s)
+        if p.is_dir():
+            out += sorted(x for x in p.iterdir() if x.suffix.lower() in (".txt", ".dck"))
+        else:
+            out.append(s)
+    return out
+
+
 def add(folder, source, name=None):
     deck = D.load(source, name)
     if name:

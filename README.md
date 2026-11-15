@@ -56,12 +56,39 @@ mtgasim gauntlet from-log             # Brawl: one deck per commander you've fac
 mtgasim run "Izzet Prowess" -f standard -n 500
 mtgasim compare "Izzet Prowess" "Izzet Prowess v2" -f standard -n 2000
 mtgasim report
+
+# test card swaps automatically and keep the ones that really help
+mtgasim optimise "Izzet Prowess" -f standard --pool candidates.txt --hours 8
+
+# local dashboard in your browser (runs, matchups, decks, optimiser)
+mtgasim serve
+
+# opt in: share your results with the public site (see "Sharing" below)
+mtgasim share --preview
+mtgasim share --name "YourName" --public
 ```
 
 Useful options: `-j 6` games at once (default: half your CPU threads), `--vs` to pick opponent decks or folders,
 `--seed` to make a run repeatable, `mtgasim setup --ai Hardest` for Forge's strongest (and slowest) AI.
 
 Everything lives in `~/.mtgasim` (decks, gauntlets, results as JSON lines, caches). Set `MTGASIM_HOME` to move it.
+
+## The optimiser
+
+`optimise` tries one-card swaps (cut one card, add one from your pool) and keeps a swap only if it survives
+three checks: a short screening run, a longer run that has to clear about 95% confidence, and a run against
+opponent decks it was never tuned on. Both versions play the same seeded games, so the comparison only has to
+beat the noise from games where the swapped card actually mattered. Accepted swaps become the new list and the
+search carries on; stop it whenever and run it again to resume. The current best list is saved in Arena import
+format under `~/.mtgasim/optimiser/<deck>/optimised.txt`.
+
+## Sharing (opt in)
+
+Nothing leaves your PC unless you run `mtgasim share`. It sends your real Arena games (day, format, result,
+your deck's colours or commander, the opponent's colours or commander), your simulator summaries, and, only
+with `--lists`, your decklists. Arena match ids are hashed, times are cut to the day, opponents are never named,
+and your Arena name is never read. You're anonymous unless you pick `--name` and `--public`.
+`mtgasim share --forget` deletes everything you've sent. The public API is described in `docs/API.md`.
 
 ## Data sources
 

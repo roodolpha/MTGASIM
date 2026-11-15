@@ -88,12 +88,13 @@ class Run:
                 self.procs.discard(p)
         games = []
         if tmp.exists():
-            for l in tmp.read_text(encoding="utf-8").splitlines():
+            for k, l in enumerate(tmp.read_text(encoding="utf-8").splitlines()):
                 try:
                     g = json.loads(l)
                 except ValueError:
                     continue
-                g.update(run=self.id, deck_a=self.deck.name, label=self.label, format=self.fmt.key,
+                # "pair": which seeded slot this game came from, so runs with the same seed line up game by game
+                g.update(pair=f"{opp.name}:{idx}:{k}", seed=seed, run=self.id, deck_a=self.deck.name, label=self.label, format=self.fmt.key,
                          ai=self.cfg.get("ai_profile", "Default"))
                 games.append(g)
             tmp.unlink()

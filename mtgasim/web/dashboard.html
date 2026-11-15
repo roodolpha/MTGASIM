@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTGASIM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0F0F10;--panel:#18181B;--line:#2A2A2F;--text:#F2EEE6;--dim:#A7A29A;--hot:#FF6B3D;--win:#5FB8FF;--loss:#FF8A5C;
+--W:#F4EBD0;--U:#3D8BE0;--B:#8E8A86;--R:#E5533A;--G:#4CA562}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--hot)}
+h1,h2,h3,.big{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;padding:14px 24px;border-bottom:1px solid var(--line)}
+.logo{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;letter-spacing:-.02em}
+.logo span{color:var(--hot)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{min-height:44px;padding:0 14px;border:0;border-radius:8px;background:none;color:var(--dim);font:600 15px system-ui,sans-serif;cursor:pointer}
+nav button[aria-current="page"]{background:var(--panel);color:var(--text)}
+#job{margin-left:auto;font-size:14px;color:var(--dim)}
+main{max-width:1200px;margin:0 auto;padding:28px 24px 64px}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{background:var(--panel);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card button.open{all:unset;cursor:pointer;display:flex;flex-direction:column;height:100%}
+.card button.open:focus-visible{outline:2px solid var(--hot);outline-offset:-2px}
+.art{height:120px;background:#222 center/cover no-repeat;position:relative}
+.art .tag{position:absolute;left:10px;bottom:10px;background:rgba(15,15,16,.85);padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
+.wr{font-family:"Bricolage Grotesque",sans-serif;font-size:34px;font-weight:800;line-height:1}
+.dim{color:var(--dim)}
+.pips{display:inline-flex;gap:3px;vertical-align:-1px}
+.pip{width:11px;height:11px;border-radius:50%;display:inline-block}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--dim);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+td.n,th.n{text-align:right}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--win)}
+.bar i.bad{background:var(--loss)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:28px;margin-top:24px}
+.panel{background:var(--panel);border-radius:12px;padding:16px 18px}
+.btn{min-height:44px;padding:0 18px;border:0;border-radius:8px;background:var(--hot);color:#1A0D07;font:700 15px system-ui,sans-serif;cursor:pointer}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--text)}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--dim)}
+input,select,textarea{background:#0B0B0C;border:1px solid var(--line);border-radius:8px;color:var(--text);font:15px system-ui,sans-serif;padding:10px 12px;min-height:44px}
+textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.form{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
+.empty{padding:40px;text-align:center;color:var(--dim);background:var(--panel);border-radius:12px}
+.hero{display:flex;gap:20px;align-items:stretch;flex-wrap:wrap;margin-bottom:8px}
+.hero .art{height:auto;min-height:160px;flex:1 1 380px;border-radius:12px}
+.hero .facts{flex:1 1 320px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.back{all:unset;cursor:pointer;color:var(--dim);font-size:14px;margin-bottom:14px;display:inline-block;min-height:44px;line-height:44px}
+.err{color:var(--loss)}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">mtga<span>sim</span></div>
+<nav aria-label="Sections">
+<button data-view="runs">Runs</button>
+<button data-view="decks">Decks</button>
+<button data-view="optimiser">Optimiser</button>
+<button data-view="new">New run</button>
+</nav>
+<div id="job" aria-live="polite"></div>
+</header>
+<main id="main"></main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = x => x == null ? '–' : (100 * x).toFixed(1) + '%';
+const art = name => name ? 'https://api.scryfall.com/cards/named?format=image&version=art_crop&exact=' + encodeURIComponent(name) : '';
+const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {}).then(r => r.json());
+let STATUS = {formats: []}, DECKS = [];
+
+function show(view, arg) {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'));
+  ({runs, decks, optimiser, new: newRun, run: runPage})[view](arg);
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view));
+
+function deckArt(d) {
+  const deck = DECKS.find(x => x.id === (d || '').replace(/\.dck$/, ''));
+  if (deck && deck.commanders && deck.commanders.length) return deck.commanders[0];
+  if (deck) { const m = deck.list.split('\n').find(l => /^\d+ /.test(l) && !/Plains|Island|Swamp|Mountain|Forest/.test(l)); return m ? m.replace(/^\d+ /, '') : ''; }
+  return '';
+}
+
+async function runs() {
+  const list = await api('/api/runs');
+  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>Nothing simulated yet</h2><p>Add a deck, fill a gauntlet, then hit <b>New run</b>.</p></div>'; return; }
+  $('#main').innerHTML = '<h1 style="font-size:30px;margin-bottom:16px">Your runs</h1><div class="row" id="cards"></div>';
+  $('#cards').innerHTML = list.map(r => {
+    const s = r.summary || {}; const deck = (r.deck || '').split(/[\\/]/).pop();
+    return `<div class="card"><button class="open" data-run="${esc(r.run)}">
+      <div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"><span class="tag">${esc(r.format)}</span></div>
+      <div class="body"><div class="dim" style="font-size:13px">${esc(r.label)}</div>
+      <div class="wr">${pct(s.win_rate)}</div>
+      <div class="dim" style="font-size:13px">${s.games || 0} games · vs ${r.opponents.length} deck${r.opponents.length === 1 ? '' : 's'} · ${new Date(r.started * 1000).toLocaleDateString()}</div></div>
+    </button></div>`; }).join('');
+  document.querySelectorAll('[data-run]').forEach(b => b.onclick = () => show('run', b.dataset.run));
+}
+
+async function runPage(id) {
+  const r = await api('/api/runs/' + encodeURIComponent(id));
+  const s = r.summary; const deck = (r.deck || '').split(/[\\/]/).pop();
+  const lo = s.ci95[0], hi = s.ci95[1];
+  $('#main').innerHTML = `<button class="back">← all runs</button>
+  <div class="hero"><div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"></div>
+  <div class="facts"><div class="dim">${esc(r.label)} · ${esc(r.format)} · AI ${esc(r.ai)}</div>
+  <div class="wr" style="font-size:64px">${pct(s.win_rate)}</div>
+  <div>${s.wins}–${s.losses}${s.draws ? '–' + s.draws : ''} over ${s.games} games. The real number's probably somewhere between ${pct(lo)} and ${pct(hi)}.</div>
+  <div class="dim">On the play ${pct(s.on_play)} · on the draw ${pct(s.on_draw)}${s.avg_turns ? ' · games last about ' + Math.round(s.avg_turns / 2) + ' turns each' : ''}</div></div></div>
+  <div class="grid2">
+  <div class="panel"><h2 style="font-size:20px;margin-bottom:8px">Matchups, worst first</h2>
+  <table><thead><tr><th>Opponent</th><th class="n">Won</th><th></th><th class="n">Games</th></tr></thead><tbody>
+  ${r.opponents.map(o => `<tr><td>${esc(o.opponent)}</td><td class="n">${pct(o.win_rate)}</td><td><div class="bar"><i class="${o.win_rate < .5 ? 'bad' : ''}" style="width:${Math.round(100 * (o.win_rate || 0))}%"></i></div></td><td class="n dim">${o.games}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="panel"><h2 style="font-size:20px;margin-bottom:4px">When this card hit the table…</h2>
+  <p class="dim" style="margin:0 0 8px;font-size:13px">Win rate when the card was on the battlefield vs when it wasn't. It's a hint for what to test, not proof: cheap cards land more often.</p>
+  <table><thead><tr><th>Card</th><th class="n">Seen</th><th class="n">With</th><th class="n">Without</th></tr></thead><tbody>
+  ${r.cards.slice(0, 12).map(c => `<tr><td>${esc(c.card)}</td><td class="n dim">${c.games_seen}</td><td class="n">${pct(c.win_seen)}</td><td class="n dim">${pct(c.win_not_seen)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">Needs more games.</td></tr>'}
+  </tbody></table></div></div>`;
+  $('.back').onclick = () => show('runs');
+}
+
+async function decks() {
+  DECKS = await api('/api/decks');
+  const g = await api('/api/gauntlets');
+  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:16px">Your decks</h1><div class="row">${DECKS.map(d => `
+    <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span></div>
+    <div class="body"><h3 style="font-size:18px">${esc(d.name)}</h3><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || 'no commander')}</div></div></div>`).join('') || '<div class="empty">No decks yet. Paste one below.</div>'}</div>
+  <div class="grid2"><div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Add a deck</h2>
+  <div style="display:flex;flex-direction:column;gap:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
+  <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>
+  <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></div>
+  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Gauntlets</h2>
+  ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(k)}</b> <span class="dim">${v.length ? esc(v.join(', ')) : 'empty'}</span></p>`).join('')}
+  <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>mtgasim gauntlet add standard decks_folder</code></p></div></div>`;
+  $('#dsave').onclick = async () => {
+    const r = await api('/api/decks', {name: $('#dname').value, list: $('#dlist').value});
+    $('#dmsg').textContent = r.error ? r.error : 'Saved (' + r.cards + ' cards)';
+    if (!r.error) setTimeout(decks, 600);
+  };
+}
+
+async function optimiser() {
+  const list = await api('/api/optimiser');
+  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>mtgasim optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
+  $('#main').innerHTML = list.map(o => `<div class="panel" style="margin-bottom:20px"><h2 style="font-size:24px">${esc(o.deck)}</h2>
+  <p class="dim" style="margin:4px 0 12px">${o.accepted.length} swap${o.accepted.length === 1 ? '' : 's'} kept out of ${o.tested} tested</p>
+  <table><thead><tr><th>Swap</th><th>Got to</th><th class="n">Difference</th><th>Kept?</th></tr></thead><tbody>
+  ${o.tried.slice().reverse().map(t => { const st = t.holdout ? 'hold-out' : t.confirm ? 'confirm' : 'screen'; const d = (t.holdout || t.confirm || t.screen || {}).diff;
+    return `<tr><td>−${esc(t.out)} <b>+${esc(t.in)}</b></td><td class="dim">${st}</td><td class="n">${d == null ? '–' : (d > 0 ? '+' : '') + (100 * d).toFixed(1) + ' pts'}</td><td>${t.accepted ? '<b style="color:var(--win)">kept</b>' : '<span class="dim">no</span>'}</td></tr>`; }).join('')}
+  </tbody></table></div>`).join('');
+}
+
+async function newRun() {
+  DECKS = await api('/api/decks');
+  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:6px">Run it</h1><p class="dim" style="margin:0 0 18px">Plays your deck against that format's gauntlet. Leave it going: more games, tighter numbers.</p>
+  <div class="panel"><div class="form">
+  <label>Deck<select id="rdeck">${DECKS.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label>
+  <label>Format<select id="rfmt">${STATUS.formats.map(f => `<option value="${esc(f.key)}">${esc(f.name)}</option>`).join('')}</select></label>
+  <label>Games<input id="rgames" type="number" min="1" max="20000" value="200" style="width:120px"></label>
+  <button class="btn" id="rgo">Start</button> <button class="btn ghost" id="rstop">Stop</button></div>
+  <p id="rmsg" class="dim" style="margin:12px 0 0"></p></div>`;
+  $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
+  $('#rstop').onclick = () => api('/api/stop', {});
+}
+
+async function poll() {
+  try {
+    STATUS = await api('/api/status');
+    const j = STATUS.job;
+    $('#job').textContent = j && j.state === 'running' ? `Running ${j.label}: ${j.done}/${j.games} games` : j ? `Last run ${j.state}` : 'AI: ' + STATUS.ai;
+  } catch (e) { $('#job').textContent = 'Dashboard server stopped'; }
+  setTimeout(poll, 2000);
+}
+poll();
+api('/api/decks').then(d => { DECKS = d; show('runs'); });
+</script>
+</body>
+</html>

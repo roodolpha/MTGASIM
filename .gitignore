@@ -10,3 +10,5 @@ forge/
 results/
 *.part
 .DS_Store
+server/node_modules
+server/.wrangler

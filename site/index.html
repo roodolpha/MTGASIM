@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mtgasim: what's actually winning on MTG Arena</title>
+<meta name="description" content="MTG Arena meta, leaderboards and matchups from real ladder games, side by side with thousands of simulated ones.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<a class="logo" href="#/">mtga<span>sim</span></a>
+<nav class="main" aria-label="Main">
+<a href="#/meta">Meta</a>
+<a href="#/leaderboard">Leaderboards</a>
+<a href="#/players">Players</a>
+<a href="#/api">API</a>
+</nav>
+<a class="pill" href="https://github.com/roodolpha/MTGASIM">Get the sim</a>
+</header>
+<main id="app" aria-live="polite"></main>
+<footer>
+<p>mtgasim is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card art via <a href="https://scryfall.com">Scryfall</a>.</p>
+<p>Sims run on <a href="https://github.com/Card-Forge/forge">Forge</a> (GPL-3.0). Everything here comes from players who opted in.</p>
+</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

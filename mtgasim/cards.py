@@ -130,3 +130,42 @@ def legality(names, fmt_key, cache_file=None) -> dict:
         cpath.parent.mkdir(parents=True, exist_ok=True)
         cpath.write_text(json.dumps(cache), encoding="utf-8")
     return {n: (cache.get(n) or {}).get(fmt_key) for n in names if n in cache}
+
+
+def identity(names, cache_file=None) -> dict:
+    """{name: {"ci": colour identity, "colors": colours, "type": type line}} from Scryfall, cached."""
+    cache = {}
+    cpath = Path(cache_file) if cache_file else None
+    if cpath and cpath.exists():
+        try:
+            cache = json.loads(cpath.read_text(encoding="utf-8"))
+        except ValueError:
+            cache = {}
+    want = [n for n in dict.fromkeys(names) if n and n not in cache]
+    for i in range(0, len(want), 75):
+        try:
+            d = _get("https://api.scryfall.com/cards/collection",
+                     {"identifiers": [{"name": n} for n in want[i:i + 75]]})
+        except Exception:
+            break
+        for c in d.get("data", []):
+            tl = c.get("type_line") or (c.get("card_faces") or [{}])[0].get("type_line", "")
+            cols = c.get("colors")
+            if cols is None:
+                cols = sorted({x for f in c.get("card_faces") or [] for x in f.get("colors") or []})
+            v = {"ci": "".join(c.get("color_identity") or []), "colors": "".join(cols), "type": tl}
+            cache[c["name"]] = v
+            cache.setdefault(c["name"].split(" // ")[0], v)
+        time.sleep(0.1)
+    if cpath:
+        cpath.parent.mkdir(parents=True, exist_ok=True)
+        cpath.write_text(json.dumps(cache), encoding="utf-8")
+    return {n: cache[n] for n in names if n in cache}
+
+
+WUBRG = "WUBRG"
+
+
+def colour_string(letters) -> str:
+    s = "".join(c for c in WUBRG if c in set(letters))
+    return s or "C"
