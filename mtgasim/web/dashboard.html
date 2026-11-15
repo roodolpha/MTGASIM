@@ -168,14 +168,14 @@ async function newRun() {
   <button class="btn" id="rgo">Start</button> <button class="btn ghost" id="rstop">Stop</button></div>
   <p id="rmsg" class="dim" style="margin:12px 0 0"></p></div>`;
   $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
-  $('#rstop').onclick = () => api('/api/stop', {});
+  $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; };
 }
 
 async function poll() {
   try {
     STATUS = await api('/api/status');
     const j = STATUS.job;
-    $('#job').textContent = j && j.state === 'running' ? `Running ${j.label}: ${j.done}/${j.games} games` : j ? `Last run ${j.state}` : 'AI: ' + STATUS.ai;
+    $('#job').textContent = j && (j.state === 'running' || j.state === 'stopping') ? `${j.state === 'stopping' ? 'Stopping' : 'Running'} ${j.label}: ${j.done}/${j.games} games` : j ? `Last run ${j.state}` : 'AI: ' + STATUS.ai;
   } catch (e) { $('#job').textContent = 'Dashboard server stopped'; }
   setTimeout(poll, 2000);
 }

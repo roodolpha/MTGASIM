@@ -64,6 +64,8 @@ class Run:
         self.procs = set()
 
     def _batch(self, java, forge_dir, opp, n, idx):
+        if self.stopping:   # queued batches after Stop: don't start them
+            return []
         tmp = self.out_dir / f".{self.id}-{idx}.part"
         seed = None if self.seed is None else self.seed + idx
         cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), opp.resolve(), n, tmp.resolve(),
@@ -73,6 +75,8 @@ class Run:
                              text=True, creationflags=flags)
         with self.lock:
             self.procs.add(p)
+            if self.stopping:   # Stop pressed while this one was starting
+                p.kill()
         try:
             for line in p.stdout:
                 if line.startswith("GAME_DONE"):
@@ -141,11 +145,15 @@ class Run:
     def stop(self):
         self.stopping = True
         with self.lock:
-            for p in list(self.procs):
-                try:
-                    p.kill()
-                except OSError:
-                    pass
+            procs = list(self.procs)
+        for p in procs:
+            try:
+                p.kill()
+            except OSError:
+                pass
+            if os.name == "nt":   # make sure the whole Java process tree goes
+                subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True,
+                               creationflags=0x08000000)
 
 
 def load_results(path_or_dir, run=None, label=None):
