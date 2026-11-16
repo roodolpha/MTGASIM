@@ -100,5 +100,8 @@ def install(on_ready_to_quit=None):
                 threading.Timer(1.5, on_ready_to_quit).start()
         except Exception as e:
             st.update(state="error", error=str(e))
+            if info.get("page"):   # e.g. GitHub refusing the download: hand over to the browser
+                import webbrowser
+                webbrowser.open(info["page"])
     threading.Thread(target=run, name="brewbench-update", daemon=True).start()
     return True

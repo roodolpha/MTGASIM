@@ -386,7 +386,7 @@ async function updateBanner(force) {
   el.className = 'updbar';
   el.innerHTML = `<b>Brewbench ${esc(u.latest)} is out</b><span class="dim">You have ${esc(u.current)}.${u.notes ? ' ' + esc(u.notes) : ''}</span>
     <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
-    ${ins.state === 'error' ? `<span class="err">Update failed: ${esc(ins.error)}</span>` : ''}
+    ${ins.state === 'error' ? `<span class="err">Couldn't download it here.</span><a class="btn" style="min-height:36px;display:inline-flex;align-items:center;text-decoration:none" href="${esc(u.page || u.url)}" target="_blank" rel="noopener">Download it instead</a>` : ''}
     ${busy ? `<span>${ins.state === 'starting' ? 'Installing… Brewbench will reopen by itself.' : 'Downloading… ' + (ins.total ? Math.round(100 * ins.done / ins.total) + '%' : '')}</span>`
       : u.can_install ? '<button class="btn" id="updgo" style="min-height:36px">Update now</button>' : `<a class="btn" style="min-height:36px;display:inline-flex;align-items:center;text-decoration:none" href="${esc(u.page || u.url)}" target="_blank" rel="noopener">Get it</a>`}
     ${busy ? '' : '<button class="btn ghost" id="updlater" style="min-height:36px">Later</button>'}</span>`;
