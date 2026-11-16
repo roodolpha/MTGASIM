@@ -1,6 +1,6 @@
 {
- "version": "0.5.3",
+ "version": "0.6.0",
  "url": "https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-setup.exe",
  "page": "https://github.com/roodolpha/MTGASIM/releases/latest",
- "notes": "The app now tells you when there's a new version and updates itself in one click."
+ "notes": "A cleaner, more professional look. Build opponent gauntlets in the app. My games shows facts and stats, no coaching."
 }
