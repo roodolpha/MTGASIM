@@ -42,6 +42,10 @@ def deck_hash(deck):
     return hashlib.sha1(body.encode()).hexdigest()[:10]
 
 
+class Stopped(Exception):
+    """Raised inside a run when stop() is called; run() catches it and saves."""
+
+
 class Optimiser:
     def __init__(self, cfg, fmt, deck_path, opponents, pool, outs=None, protect=(), instances=None, log=print,
                  screen=SCREEN_GAMES, confirm=CONFIRM_GAMES, holdout=HOLDOUT_GAMES):
@@ -58,6 +62,8 @@ class Optimiser:
         self.instances = instances
         self.n = {"screen": screen, "confirm": confirm, "holdout": holdout}
         self.state = self._load()
+        self.stopping = False
+        self._current = None     # the Run in progress, so stop() can end it
 
     # ---------------------------------------------------------------- state
     def _load(self):
@@ -80,7 +86,21 @@ class Optimiser:
         path = deck.save(self.dir / "variants" / f"{deck_hash(deck)}.dck")
         r = runner.Run(self.cfg, self.fmt, path, opps, games, self.instances, seed, f"{self.slug}:{tag}",
                        out_dir=self.dir / "runs", log=lambda *_: None)
-        return r.start()
+        self._current = r
+        try:
+            games_ = r.start()
+        finally:
+            self._current = None
+        if self.stopping:
+            raise Stopped()
+        return games_
+
+    def stop(self):
+        """Ends the test in progress; everything finished so far is saved, and running again resumes."""
+        self.stopping = True
+        r = self._current
+        if r is not None:
+            r.stop()
 
     def _baseline(self, stage, opps, games, seed):
         """The current deck's games for one (stage, seed): cached, because every swap compares against it."""
@@ -128,6 +148,13 @@ class Optimiser:
 
     # ---------------------------------------------------------------- the loop
     def run(self, max_tests=None, until=None):
+        try:
+            return self._loop(max_tests, until)
+        except Stopped:
+            self.log("Stopped. Run it again to carry on from here.")
+            return self.report()
+
+    def _loop(self, max_tests=None, until=None):
         tests = 0
         while True:
             seed0 = self.state["seed_base"] + 100 * len(self.state["accepted"])

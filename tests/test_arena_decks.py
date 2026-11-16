@@ -172,3 +172,18 @@ def test_plan_weights_games_by_how_often_faced():
     w = per(runner.plan(opps, 30, weights=[6, 3, 0]))
     assert sum(w.values()) == 30 and w["c"] == 1 and w["a"] > w["b"] > w["c"]   # never-faced still gets a game
     assert per(runner.plan(opps, 30, weights=[0, 0, 0])) == {"a": 10, "b": 10, "c": 10}
+
+
+def test_optimiser_stop_saves_and_returns(tmp_path, monkeypatch):
+    from brewbench import formats, optimiser as O
+    cfg = Config(tmp_path / "home")
+    deck = tmp_path / "me.dck"; deck.write_text("[Main]\n4 Opt\n56 Island\n")
+    opp = tmp_path / "o.dck"; opp.write_text("[Main]\n60 Island\n")
+    o = O.Optimiser(cfg, formats.get("standard"), deck, [opp], ["Ponder"], log=lambda *a: None)
+    class R:
+        def __init__(self, *a, **k): self.stopped = False
+        def start(self): o.stop(); return []        # stop arrives during the first test
+        def stop(self): self.stopped = True
+    monkeypatch.setattr(O.runner, "Run", R)
+    report = o.run()
+    assert o.stopping and "accepted" in report

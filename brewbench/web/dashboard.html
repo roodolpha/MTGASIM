@@ -214,7 +214,7 @@ async function swapPage(pick) {
   const sw = await api('/api/swap');
   const running = sw.state === 'running';
   const fmts = (STATUS.formats || []);
-  const cur = DECKS.find(d => d.id === pick) || DECKS[0] || {};
+  const cur = DECKS.find(d => d.id === pick) || DECKS.slice().sort((a, b) => b.updated - a.updated)[0] || {};
   const changes = (sw.out || []).length || (sw.into || []).length ? `<p class="dim" style="margin:6px 0 0">Out: ${(sw.out || []).map(([n, q]) => esc(q + ' ' + n)).join(', ') || 'nothing'} · In: ${(sw.into || []).map(([n, q]) => esc(q + ' ' + n)).join(', ') || 'nothing'}</p>` : '';
   let result = '';
   if (sw.state === 'finished' && sw.result) {
@@ -337,15 +337,45 @@ async function decks() {
 }
 
 async function optimiser() {
-  const list = await api('/api/optimiser');
-  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>brewbench optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
-  $('#main').innerHTML = `<div class="plain"><h1 class="page">Optimiser</h1><p class="dim" style="margin:0">Each swap has to win a screen, a bigger confirm, then a hold-out against decks it never trained on.</p></div>` + list.map(o => `<div class="panel"><h2>${esc(o.deck)}</h2>
+  const [list, st] = await Promise.all([api('/api/optimiser'), api('/api/optimiser/status')]);
+  DECKS = await api('/api/decks');
+  const running = st.state === 'running';
+  const fmts = STATUS.formats || [];
+  const cur = DECKS.find(d => d.id === OPTDECK) || DECKS.slice().sort((a, b) => b.updated - a.updated)[0] || {};
+  $('#main').innerHTML = `<div class="plain"><h1 class="page">Optimiser</h1>
+    <p class="dim" style="margin:0">Tries one-card swaps from a list of candidates and keeps only the ones that really help. Each swap has to win a short test, then a longer one, then a check against opponents it never trained on. It saves as it goes: stop any time and start again to carry on.</p></div>
+  ${running || st.state === 'error' || st.state === 'finished' || st.state === 'stopped' ? `<section class="panel" style="border-left:3px solid ${running ? 'var(--sim)' : st.state === 'error' ? 'var(--loss)' : 'var(--win)'}">
+    <div class="secthead"><h2>${running ? 'Optimising' : st.state === 'error' ? 'Stopped by an error' : st.state === 'stopped' ? 'Stopped' : 'Finished'}: ${esc(st.deck || '')}</h2>${running ? '<button class="btn stop" id="ostop">Stop</button>' : ''}</div>
+    ${st.error ? `<p class="err">${esc(st.error)}</p>` : ''}
+    <pre style="margin:10px 0 0;white-space:pre-wrap;max-height:260px;overflow:auto;background:var(--bg);border-radius:6px;padding:10px;font-size:12px">${esc((st.log || []).slice(-14).join('\n') || 'Starting…')}${st.report ? '\n\n' + esc(st.report) : ''}</pre></section>` : ''}
+  <section class="panel"><h2 style="margin-bottom:12px">Start</h2>
+    <div class="form" style="margin-bottom:12px">
+      <label>Deck<select id="odeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === cur.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>
+      <label>Format<select id="ofmt">${fmts.map(f => `<option value="${esc(f.key)}" ${f.key === (cur.format || 'brawl') ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>
+      <label>Stop after<select id="omin"><option value="0">no limit</option><option value="30">30 minutes</option><option value="120" selected>2 hours</option><option value="480">8 hours (overnight)</option></select></label>
+    </div>
+    <div class="grid2">
+      <label>Cards to try adding, one per line<textarea id="opool" placeholder="Opt&#10;Ponder&#10;..."></textarea>
+        <span style="display:flex;gap:8px;margin-top:6px"><button class="btn ghost" id="ofill" type="button">Fill with cards from my other decks</button></span></label>
+      <label>Cards it must never cut (optional)<textarea id="oprot" placeholder="e.g. your key combo pieces"></textarea></label>
+    </div>
+    <p style="margin:12px 0 0"><button class="btn" id="ogo" ${running ? 'disabled' : ''}>Start optimising</button> <span id="omsg" class="dim"></span></p></section>
+  ${list.length ? '<h2 style="font-size:15px">Results so far</h2>' : ''}` + list.map(o => `<div class="panel"><h2>${esc(o.deck)}</h2>
   <p class="dim" style="margin:4px 0 12px">${o.accepted.length} swap${o.accepted.length === 1 ? '' : 's'} kept out of ${o.tested} tested</p>
   <table><thead><tr><th>Swap</th><th>Got to</th><th class="n">Difference</th><th>Kept?</th></tr></thead><tbody>
-  ${o.tried.slice().reverse().map(t => { const st = t.holdout ? 'hold-out' : t.confirm ? 'confirm' : 'screen'; const d = (t.holdout || t.confirm || t.screen || {}).diff;
-    return `<tr><td>−${esc(t.out)} <b>+${esc(t.in)}</b></td><td class="dim">${st}</td><td class="n">${d == null ? '–' : (d > 0 ? '+' : '') + (100 * d).toFixed(1) + ' pts'}</td><td>${t.accepted ? '<b style="color:var(--win)">kept</b>' : '<span class="dim">no</span>'}</td></tr>`; }).join('')}
+  ${o.tried.slice().reverse().slice(0, 40).map(t => { const stg = t.holdout ? 'hold-out' : t.confirm ? 'confirm' : 'screen'; const d = (t.holdout || t.confirm || t.screen || {}).diff;
+    return `<tr><td>−${esc(t.out)} <b>+${esc(t.in)}</b></td><td class="dim">${stg}</td><td class="n">${d == null ? '–' : (d > 0 ? '+' : '') + (100 * d).toFixed(1) + ' pts'}</td><td>${t.accepted ? '<b style="color:var(--win)">kept</b>' : '<span class="dim">no</span>'}</td></tr>`; }).join('')}
   </tbody></table></div>`).join('');
+  $('#odeck').onchange = () => { OPTDECK = $('#odeck').value; const d = DECKS.find(x => x.id === OPTDECK); if (d && d.format) $('#ofmt').value = d.format; };
+  $('#ofill').onclick = async () => { const r = await api('/api/optimiser/pool', {deck: $('#odeck').value, format: $('#ofmt').value});
+    if (r.error) { $('#omsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>'; return; }
+    $('#opool').value = r.cards.join('\n'); $('#omsg').textContent = r.cards.length ? `${r.cards.length} cards from your other decks. Trim the list to what you'd actually play.` : 'No other cards found in your decks for this format.'; };
+  $('#ogo').onclick = async () => { const r = await api('/api/optimiser/start', {deck: $('#odeck').value, format: $('#ofmt').value, pool: $('#opool').value, protect: $('#oprot').value, minutes: +$('#omin').value});
+    if (r.error) { $('#omsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>'; return; } optimiser(); };
+  const os = $('#ostop'); if (os) os.onclick = () => stopAll(os);
+  if (running) setTimeout(() => { if (location.hash.startsWith('#optimiser') && document.activeElement?.tagName !== 'TEXTAREA') optimiser(); }, 3000);
 }
+let OPTDECK = '';
 
 async function newRun(pick) {
   DECKS = await api('/api/decks');
@@ -469,8 +499,8 @@ async function stopAll(btn) {
 function simming() {
   const j = STATUS.job, o = STATUS.outside || {}, sw = STATUS.swap || {};
   const mine = j && (j.state === 'running' || j.state === 'stopping');
-  const swap = sw.state === 'running';
-  return {mine, j, swap, sw, outside: !mine && !swap && (o.games || o.drivers), any: mine || swap || o.games || o.drivers};
+  const swap = sw.state === 'running', op = (STATUS.opt || {}).state === 'running';
+  return {mine, j, swap, sw, op, outside: !mine && !swap && !op && (o.games || o.drivers), any: mine || swap || op || o.games || o.drivers};
 }
 let POLL;
 async function poll() {
@@ -478,7 +508,8 @@ async function poll() {
   try {
     STATUS = await api('/api/status');
     const s = simming(), j = s.j;
-    const text = s.swap ? `Testing a change to ${esc(s.sw.deck)}: ${s.sw.done}/${2 * s.sw.games} games`
+    const text = s.op ? `Optimising ${esc(STATUS.opt.deck)}: ${esc(STATUS.opt.last || '')}`
+      : s.swap ? `Testing a change to ${esc(s.sw.deck)}: ${s.sw.done}/${2 * s.sw.games} games`
       : s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
       : s.outside ? 'Sims running (started outside the app)'
       : j && j.missing ? `<span class="err" title="${esc((j.problems || []).join(', '))}">Last run: ${j.missing} of ${j.games} games couldn't be played (PC too busy?)</span>`

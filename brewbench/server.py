@@ -154,6 +154,37 @@ def start_swap(cfg, fmt, deck_path, list_b, games, opps):
     threading.Thread(target=go, name="swap-test", daemon=True).start()
 
 
+# the optimiser, started from the app (one at a time)
+OPT = {"state": "idle", "log": []}
+_OPT_RUN = {"o": None}
+
+
+def start_optimiser(cfg, fmt, deck_path, opps, pool, protect, minutes):
+    from . import optimiser as O
+    if OPT.get("state") == "running":
+        raise RuntimeError("The optimiser is already running.")
+    if not pool:
+        raise ValueError("Add some candidate cards to try.")
+    OPT.clear()
+    OPT.update(state="running", deck=D.read_dck(deck_path).name, format=fmt.key, log=[], started=int(time.time()),
+               error=None, report=None)
+
+    def say(msg):
+        OPT["log"] = (OPT["log"] + [str(msg)])[-40:]
+    o = O.Optimiser(cfg, fmt, deck_path, opps, pool, protect=protect, log=say)
+    _OPT_RUN["o"] = o
+
+    def go():
+        try:
+            OPT["report"] = o.run(until=time.time() + minutes * 60 if minutes else None)
+            OPT["state"] = "stopped" if o.stopping else "finished"
+        except Exception as e:
+            OPT.update(state="error", error=str(e))
+        finally:
+            _OPT_RUN["o"] = None
+    threading.Thread(target=go, name="optimiser", daemon=True).start()
+
+
 # building opponent decks takes a while (one EDHREC + Scryfall lookup each), so it runs in the background
 GAUNTLET_JOB = {"state": "idle", "format": None, "done": 0, "total": 0, "current": "", "made": [], "skipped": [],
                 "error": None}
@@ -410,6 +441,8 @@ def make_handler(cfg, jobs):
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
             if path == "/api/swap":
                 return self._send(200, {k: v for k, v in SWAP.items()})
+            if path == "/api/optimiser/status":
+                return self._send(200, dict(OPT))
             if path == "/api/gauntlet":
                 fk = parse_qs(u.query).get("format", ["brawl"])[0]
                 if fk not in formats.FORMATS:
@@ -445,7 +478,9 @@ def make_handler(cfg, jobs):
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
                                         "job": jobs.view(), "outside": {k: _OUTSIDE[k] for k in ("games", "drivers")},
-                                        "swap": {k: SWAP.get(k) for k in ("state", "phase", "done", "games", "deck")}})
+                                        "swap": {k: SWAP.get(k) for k in ("state", "phase", "done", "games", "deck")},
+                                        "opt": {"state": OPT.get("state"), "deck": OPT.get("deck"),
+                                                "last": (OPT.get("log") or [""])[-1]}})
             if path == "/api/runs":
                 return self._send(200, run_list(cfg))
             if path.startswith("/api/runs/"):
@@ -557,8 +592,44 @@ def make_handler(cfg, jobs):
                 except (ValueError, RuntimeError) as e:
                     return self._send(400, {"error": str(e)})
                 return self._send(200, {k: v for k, v in SWAP.items()})
+            if path == "/api/optimiser/start":
+                fk, stem = str(body.get("format") or ""), str(body.get("deck") or "")
+                if fk not in formats.FORMATS or not re.fullmatch(r"[A-Za-z0-9_.-]+", stem):
+                    return self._send(400, {"error": "Pick a deck and a format."})
+                src = cfg.decks_dir / f"{stem}.dck"
+                opps = gauntlet.list_decks(cfg.gauntlet_dir(fk))
+                if not src.exists() or not opps:
+                    return self._send(400, {"error": "Pick a deck, and add opponents for that format first."})
+                lines = lambda k: [D.clean_name(re.sub(r"^\s*\d+\s*x?\s+", "", l)) for l in str(body.get(k) or "").splitlines() if l.strip()]
+                try:
+                    start_optimiser(cfg, formats.get(fk), src, opps, lines("pool"), lines("protect"),
+                                    max(0, int(body.get("minutes") or 0)))
+                except (ValueError, RuntimeError) as e:
+                    return self._send(400, {"error": str(e)})
+                return self._send(200, dict(OPT))
+            if path == "/api/optimiser/pool":   # quick-fill candidates: cards in your other decks of this format
+                stem, fk = str(body.get("deck") or ""), str(body.get("format") or "")
+                src = cfg.decks_dir / f"{stem}.dck"
+                if not src.exists():
+                    return self._send(400, {"error": "No such deck."})
+                me = D.read_dck(src)
+                have = set(me.main) | set(me.commanders)
+                pool = {}
+                for p in cfg.decks_dir.glob("*.dck"):
+                    if p == src:
+                        continue
+                    d = D.read_dck(p)
+                    if d.format and fk and d.format != fk:
+                        continue
+                    for n in list(d.main) + list(d.side):
+                        if n not in have and n not in D.BASICS and not n.startswith("#"):
+                            pool[n] = pool.get(n, 0) + 1
+                pool.update({n: pool.get(n, 0) + 1 for n in me.side if n not in have})
+                return self._send(200, {"cards": [n for n, _ in sorted(pool.items(), key=lambda x: (-x[1], x[0]))][:120]})
             if path == "/api/stop":   # stops everything: the app's run and any started from the command line
                 jobs.stop()
+                if _OPT_RUN["o"] is not None:
+                    _OPT_RUN["o"].stop()
                 if _SWAP_RUN["r"] is not None:
                     _SWAP_RUN["r"].stop()
                 n = runner.kill_all_sims()
