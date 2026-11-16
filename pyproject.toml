@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brewbench"
-version = "0.7.0"
+version = "0.7.1"
 description = "Simulate your MTG Arena decks against a gauntlet using Forge's AI"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}

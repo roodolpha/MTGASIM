@@ -13,7 +13,37 @@ from pathlib import Path
 UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/MTGASIM)", "Accept": "application/json"}
 
 
-def _arena_db_candidates():
+def install_dirs_from_log(log_paths=None):
+    """Arena's own log says where the game is installed: Unity writes "Mono path[0] = '<install>/MTGA_Data/Managed'"
+    near the top. Returns the data folders it names (the folder holding Downloads/Raw), newest log first."""
+    if log_paths is None:
+        from .arena_log import default_log_paths
+        log_paths = [p for p in default_log_paths() if p.exists()]
+    out = []
+    for lp in reversed(list(log_paths)):
+        try:
+            with open(lp, encoding="utf-8", errors="replace") as f:
+                for _ in range(300):
+                    line = f.readline()
+                    if not line:
+                        break
+                    m = re.search(r"Mono path\[0\] = '(.+?)[\\/]Managed'", line)
+                    if m:
+                        d = os.path.normpath(m.group(1))
+                        if d not in out:
+                            out.append(d)
+                        break
+        except OSError:
+            continue
+    return out
+
+
+def _arena_db_candidates(log_paths=None):
+    found = []
+    for d in install_dirs_from_log(log_paths):     # wherever Arena actually is, any drive or launcher
+        found += glob.glob(os.path.join(d, "Downloads", "Raw", "Raw_CardDatabase_*.mtga"))
+    if found:
+        return found
     roots = [os.environ.get("ARENA_INSTALL_DIR", "")]
     if os.name == "nt":
         for base in (os.environ.get("ProgramFiles", r"C:\Program Files"),
@@ -29,7 +59,6 @@ def _arena_db_candidates():
                   "/Applications/MTGA.app/Contents/Resources/Data",
                   str(Path.home() / "Library" / "Application Support" / "Steam" / "steamapps" / "common" / "MTGA")]
         pattern = os.path.join("**", "Raw_CardDatabase_*.mtga")
-    found = []
     for r in filter(None, roots):
         found += glob.glob(os.path.join(r, pattern), recursive=True)
     return found
@@ -90,7 +119,7 @@ class CardBook:
         n = self._local.get(int(grp_id))
         if not n:
             try:
-                n = _get(f"https://api.scryfall.com/cards/arena/{int(grp_id)}")["name"]
+                n = _get(f"https://api.scryfall.com/cards/arena/{int(grp_id)}", timeout=8)["name"]
                 time.sleep(0.1)
             except Exception:
                 return None   # offline or unknown: don't cache, try again next time

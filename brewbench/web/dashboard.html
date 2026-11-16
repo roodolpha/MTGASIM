@@ -325,7 +325,9 @@ async function decks() {
     const d = DECKS.find(x => x.id === b.dataset.rm);
     if (!confirm(`Remove ${d.name}?` + (d.from_arena ? ' It won\'t come back from Arena unless you re-add it there under a new deck.' : ''))) return;
     await api('/api/decks/remove', {id: b.dataset.rm}); decks(); });
-  $('#dsync').onclick = async () => { $('#dsmsg').textContent = 'Checking…'; const r = await api('/api/decks/sync', {});
+  $('#dsync').onclick = async () => { $('#dsmsg').textContent = 'Checking…';
+    const slow = setTimeout(() => { $('#dsmsg').textContent = 'Looking up card names. The first time can take a few minutes; after that it\'s quick.'; }, 4000);
+    const r = await api('/api/decks/sync', {}); clearTimeout(slow);
     $('#dsmsg').textContent = r.error ? r.error : (r.added.length || r.updated.length) ? `${r.added.length} new, ${r.updated.length} updated.` : 'Already up to date.';
     if (!r.error && (r.added.length || r.updated.length)) setTimeout(decks, 800); };
   setTimeout(async () => { if (location.hash !== '#decks') return; const d = await api('/api/decks'); if (d.length !== DECKS.length) decks(); }, 5000);

@@ -65,3 +65,26 @@ begin
   for i := 1 to ParamCount do
     if CompareText(ParamStr(i), '/UPDATE') = 0 then Result := True;
 end;
+
+// On uninstall, offer to remove the Java and Forge copies Brewbench downloaded for itself (they're big, and
+// nothing else uses them). Decks, results and settings are kept unless the person also says yes to those.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var home: String;
+begin
+  if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
+  begin
+    home := ExpandConstant('{%USERPROFILE}\.brewbench');
+    if not DirExists(home) then home := ExpandConstant('{%USERPROFILE}\.mtgasim');
+    if DirExists(home + '\runtime') or DirExists(home + '\forge') then
+      if MsgBox('Also remove the Java and Forge that Brewbench downloaded for itself? Nothing else on this PC uses them.'
+                + #13#10#13#10 + 'Your decks and results are kept.', mbConfirmation, MB_YESNO) = IDYES then
+      begin
+        DelTree(home + '\runtime', True, True, True);
+        DelTree(home + '\forge', True, True, True);
+      end;
+    if DirExists(home) then
+      if MsgBox('Also delete your Brewbench decks, results and settings? This can''t be undone.',
+                mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        DelTree(home, True, True, True);
+  end;
+end;

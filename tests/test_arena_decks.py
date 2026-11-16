@@ -204,3 +204,17 @@ def test_crash_reports_are_opt_in_and_scrubbed(tmp_path, monkeypatch):
     assert crash.report(err, "test", cfg) is False                        # same problem again: not resent
     s = crash.scrub(r"C:\Users\roodo\.mtgasim and /home/alice/x and /Users/bob/y")
     assert "roodo" not in s and "alice" not in s and "bob" not in s
+
+
+def test_card_database_found_from_arena_log(tmp_path):
+    """Arena installed anywhere: the log's Mono path line says where, so names come from Arena's own database."""
+    from brewbench import cards
+    data = tmp_path / "Games" / "Odd Place" / "MTGA" / "MTGA_Data"
+    raw = data / "Downloads" / "Raw"
+    raw.mkdir(parents=True)
+    db = raw / "Raw_CardDatabase_abc.mtga"
+    db.write_bytes(b"")
+    log = tmp_path / "Player.log"
+    log.write_text("Mono path[0] = '" + str(data / "Managed").replace("\\", "/") + "'\nInitialize engine version: 6000\n")
+    assert cards.install_dirs_from_log([log]) == [str(data)]
+    assert cards._arena_db_candidates([log]) == [str(db)]
