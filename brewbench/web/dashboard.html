@@ -184,10 +184,52 @@ async function runPage(id) {
   $('.back').onclick = () => show('runs');
 }
 
-let DFMT = '';
+let DFMT = '', OPPFMT = '';
+// ---- Opponents: the decks your deck is simmed against, per format
+async function opponents() {
+  const box = $('#opp'); if (!box) return;
+  const g = await api('/api/gauntlet?format=' + encodeURIComponent(OPPFMT));
+  const job = g.job || {}, building = job.state === 'running' && job.format === OPPFMT;
+  const fmts = (STATUS.formats || []).map(f => f.key);
+  const SHORT = {brawl: 'Historic Brawl', standardbrawl: 'Standard Brawl'};
+  const nm = k => SHORT[k] || ((STATUS.formats || []).find(f => f.key === k) || {}).name || k;
+  box.innerHTML = `<div class="secthead" style="margin:0 0 10px"><h2>Opponents</h2><span class="dim">${g.decks.length} deck${g.decks.length === 1 ? '' : 's'} in the ${esc(nm(OPPFMT))} gauntlet</span></div>
+  <p class="dim" style="margin:0 0 12px">Your deck is simmed against every deck here. The closer this is to what you actually face, the more the numbers mean.</p>
+  <div class="tabs" role="tablist" aria-label="Opponent format" style="margin-bottom:14px">${fmts.map(k => `<button role="tab" aria-selected="${k === OPPFMT}" data-ofmt="${esc(k)}">${esc(nm(k))}</button>`).join('')}</div>
+  ${g.commander ? `<div class="form" style="margin-bottom:12px">
+     <button class="btn" id="obuild" ${building ? 'disabled' : ''}>Build from commanders I've faced</button>
+     <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="oedh" checked style="min-height:auto"> Fill out lists from EDHREC</label>
+     <span style="flex-basis:100%;height:0"></span>
+     <label>Or add a commander by name<input id="ocmd" placeholder="e.g. Tam, the Possibility" style="min-width:300px"></label><button class="btn ghost" id="ocmdgo">Add</button></div>` : ''}
+  ${building ? `<p style="margin:0 0 12px">Building ${job.done}/${job.total || '?'}${job.current ? ': ' + esc(job.current) : ''}… <button class="btn ghost" id="ocancel" style="min-height:32px;padding:0 12px;font-size:13px">Cancel</button></p>`
+    : job.format === OPPFMT && job.state === 'done' ? `<p class="dim" style="margin:0 0 12px">Added ${job.made.length} deck${job.made.length === 1 ? '' : 's'}.${job.skipped.length ? ' Skipped: ' + esc(job.skipped.slice(0, 6).join(', ')) + (job.skipped.length > 6 ? '…' : '') : ''}</p>`
+    : job.format === OPPFMT && job.state === 'error' ? `<p class="err" style="margin:0 0 12px">${esc(job.error)}</p>` : ''}
+  <div class="form" style="margin-bottom:14px">
+    <label>Copy one of my decks in<select id="ocopy"><option value="">Pick a deck…</option>${DECKS.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label><button class="btn ghost" id="ocopygo">Copy</button>
+  </div>
+  <details style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:700">Paste an opponent's list</summary>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-width:640px"><label>Name<input id="opname" placeholder="e.g. Mono-Red Aggro"></label>
+    <label>List (Arena export format)<textarea id="oplist" style="min-height:140px"></textarea></label><div><button class="btn ghost" id="opgo">Add to gauntlet</button></div></div></details>
+  <p id="omsg" class="dim" style="margin:0 0 10px" aria-live="polite"></p>
+  ${g.decks.length ? `<div style="max-height:420px;overflow:auto"><table><thead><tr><th>Deck</th><th>Commander</th><th class="n">Cards</th><th></th></tr></thead><tbody>
+    ${g.decks.map(d => `<tr><td>${esc(d.name)}</td><td class="dim">${esc(d.commander || '')}</td><td class="n">${d.cards}</td><td class="n"><button class="btn ghost" style="min-height:30px;padding:0 10px;font-size:13px" data-orm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <p style="margin:10px 0 0"><button class="btn ghost" id="oclear" style="min-height:32px;padding:0 12px;font-size:13px">Remove all</button></p>`
+    : '<p class="dim" style="margin:0">No opponents yet. ' + (g.commander ? 'Build them from the commanders you\'ve faced, or add some by name.' : 'Copy decks in or paste lists.') + '</p>'}`;
+  const msg = t => $('#omsg').innerHTML = t;
+  const post = async (path, b) => { const r = await api(path, Object.assign({format: OPPFMT}, b)); if (r.error) { msg('<span class="err">' + esc(r.error) + '</span>'); return null; } return r; };
+  box.querySelectorAll('[data-ofmt]').forEach(b => b.onclick = () => { OPPFMT = b.dataset.ofmt; opponents(); });
+  const bb = $('#obuild'); if (bb) bb.onclick = async () => { if (await post('/api/gauntlet/build', {edhrec: $('#oedh').checked})) opponents(); };
+  const cg = $('#ocmdgo'); if (cg) cg.onclick = async () => { msg('Looking it up…'); const r = await post('/api/gauntlet/commander', {commander: $('#ocmd').value}); if (r) { opponents(); } };
+  const cc = $('#ocancel'); if (cc) cc.onclick = async () => { await post('/api/gauntlet/cancel', {}); };
+  $('#ocopygo').onclick = async () => { if (!$('#ocopy').value) return; if (await post('/api/gauntlet/copy', {deck: $('#ocopy').value})) opponents(); };
+  $('#opgo').onclick = async () => { if (await post('/api/gauntlet/paste', {name: $('#opname').value, list: $('#oplist').value})) opponents(); };
+  box.querySelectorAll('[data-orm]').forEach(b => b.onclick = async () => { if (await post('/api/gauntlet/remove', {id: b.dataset.orm})) opponents(); });
+  const cl = $('#oclear'); if (cl) cl.onclick = async () => { if (!confirm(`Remove all ${g.decks.length} opponents from the ${nm(OPPFMT)} gauntlet?`)) return; if (await post('/api/gauntlet/remove', {id: '*'})) opponents(); };
+  if (building) setTimeout(() => { if ($('#opp')) opponents(); }, 1500);
+}
 async function decks() {
   DECKS = await api('/api/decks');
-  const g = await api('/api/gauntlets');
   const SHORT = {brawl: 'Historic Brawl', standardbrawl: 'Standard Brawl'};
   const fname = k => SHORT[k] || ((STATUS.formats || []).find(f => f.key === k) || {}).name || k || 'Pasted';
   const fmts = [...new Set(DECKS.map(d => d.format || '-'))].sort((x, y) => (x === '-') - (y === '-') || fname(x).localeCompare(fname(y)));
@@ -205,9 +247,10 @@ async function decks() {
   <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
   <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>
   <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></details></div>
-  <div class="panel"><h2 style="margin-bottom:10px">Gauntlets</h2>
-  ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(fname(k))}</b> <span class="dim">${v.length ? v.length + ' opponent deck' + (v.length === 1 ? '' : 's') : 'empty'}</span></p>`).join('')}
-  <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>brewbench gauntlet add standard decks_folder</code></p></div></div>`;
+  </div>
+  <section class="panel" id="opp"></section>`;
+  OPPFMT = OPPFMT || (DFMT && DFMT !== '-' ? DFMT : 'brawl');
+  opponents();
   document.querySelectorAll('[data-dfmt]').forEach(b => b.onclick = () => { DFMT = b.dataset.dfmt; decks(); });
   document.querySelectorAll('[data-sim]').forEach(b => b.onclick = e => { e.preventDefault(); show('new', b.dataset.sim); });
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
@@ -273,6 +316,7 @@ async function setup() {
      ? (st.arena_log.detailed === false ? `<p>Found Arena's log, but Detailed Logs looks off. In Arena: <b>Options → Account → Detailed Logs (Plugin Support)</b>, then restart Arena.</p>` : `<p class="dim">Reading ${esc(st.arena_log.path)}. Your games get recorded automatically.</p>`)
      : `<p>Not found yet. Start Arena once, and turn on <b>Options → Account → Detailed Logs (Plugin Support)</b>. Only needed for game tracking and importing your decks.</p>`)}
   ${row(st.decks > 0, 'A deck', st.decks ? `<p class="dim">${st.decks} deck${st.decks === 1 ? '' : 's'} saved.</p>` : `<p>Paste one on the <a href="#" id="godecks">Decks</a> page (Arena's Export button copies it).</p>`)}
+  ${row(Object.values(st.opponents || {}).some(n => n > 0), 'Opponents to play against', Object.values(st.opponents || {}).some(n => n > 0) ? `<p class="dim">${Object.entries(st.opponents).filter(([k, n]) => n).map(([k, n]) => n + ' ' + esc(k)).join(', ')} opponent decks.</p>` : `<p>Sims play your deck against a gauntlet of opponents. On the <a href="#decks">Decks</a> page, under Opponents, build them from the commanders you've faced, or copy and paste lists in.</p>`)}
   </div>${st.ready ? '<div><button class="btn" id="done">All set, take me in</button></div>' : ''}`;
   document.querySelectorAll('[data-dl]').forEach(b => b.onclick = async () => { await api('/api/setup/download', {what: b.dataset.dl}); setTimeout(setup, 800); });
   const fu = $('#fuse'); if (fu) fu.onclick = async () => { const r = await api('/api/setup/use', {forge_dir: $('#fdir').value}); if (r.error) alert(r.error); setup(); };

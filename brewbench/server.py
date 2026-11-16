@@ -1,6 +1,7 @@
 """The local dashboard: a small web server on your own PC (127.0.0.1 only) with a JSON API over your
 decks, runs and optimiser results, and a page that shows them. It can also start runs."""
 import json
+import os
 import logging
 import re
 import threading
@@ -69,6 +70,48 @@ def _watch_outside(stop_after=None):
         except Exception:
             pass
         time.sleep(5)
+
+
+# building opponent decks takes a while (one EDHREC + Scryfall lookup each), so it runs in the background
+GAUNTLET_JOB = {"state": "idle", "format": None, "done": 0, "total": 0, "current": "", "made": [], "skipped": [],
+                "error": None}
+_GJ_STOP = threading.Event()
+_FORGE_NAMES = {}
+
+
+def forge_names(cfg):
+    from . import forge
+    try:
+        key = str(cfg.forge_dir)
+    except Exception:
+        raise ValueError("Set up Forge first: Settings > Setup checklist.") from None
+    if key not in _FORGE_NAMES:
+        names = forge.card_names(cfg.forge_dir)
+        if not names:
+            raise ValueError("Set up Forge first (Settings > Setup checklist).")
+        _FORGE_NAMES[key] = names
+    return _FORGE_NAMES[key]
+
+
+def start_gauntlet_build(cfg, fmt, use_edhrec, limit):
+    if GAUNTLET_JOB["state"] == "running":
+        return False
+    names = forge_names(cfg)
+    _GJ_STOP.clear()
+    GAUNTLET_JOB.update(state="running", format=fmt.key, done=0, total=0, current="", made=[], skipped=[], error=None)
+
+    def prog(i, n, c):
+        GAUNTLET_JOB.update(done=i, total=n, current=c)
+
+    def run():
+        try:
+            made, skipped = gauntlet.build_faced(cfg, fmt, names, use_edhrec=use_edhrec, limit=limit,
+                                                 progress=prog, stop=_GJ_STOP)
+            GAUNTLET_JOB.update(state="done", made=made, skipped=skipped)
+        except Exception as e:
+            GAUNTLET_JOB.update(state="error", error=str(e))
+    threading.Thread(target=run, name="gauntlet-build", daemon=True).start()
+    return True
 
 
 _SUMMARIES = {}   # results file -> (mtime, size, summary): big imported runs are only read once
@@ -195,6 +238,24 @@ def make_handler(cfg, jobs):
             self.wfile.write(data)
 
         def do_GET(self):
+            self._safe(self._get)
+
+        def do_POST(self):
+            self._safe(self._post)
+
+        def _safe(self, fn):
+            try:
+                fn()
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
+            except Exception as e:   # never leave the page hanging on an unexpected error
+                log.exception("request failed: %s", self.path)
+                try:
+                    self._send(500, {"error": f"Something went wrong: {e}"})
+                except Exception:
+                    pass
+
+        def _get(self):
             u = urlparse(self.path)
             path = u.path.rstrip("/") or "/"
             if path == "/":
@@ -205,6 +266,13 @@ def make_handler(cfg, jobs):
                 data = f.read_text(encoding="utf-8") if f.exists() else '{"matches":[],"cards":{}}'
                 page = TRACKER_PAGE.read_text(encoding="utf-8").replace("/*__DATA__*/{}", data.replace("</", "<\\/"))
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+            if path == "/api/gauntlet":
+                fk = parse_qs(u.query).get("format", ["brawl"])[0]
+                if fk not in formats.FORMATS:
+                    return self._send(400, {"error": "unknown format"})
+                fmt = formats.get(fk)
+                return self._send(200, {"format": fk, "name": fmt.name, "commander": fmt.commander,
+                                        "decks": gauntlet.describe(cfg.gauntlet_dir(fk)), "job": GAUNTLET_JOB})
             if path == "/api/share":
                 from . import share
                 return self._send(200, share.settings(cfg))
@@ -246,7 +314,7 @@ def make_handler(cfg, jobs):
                 return self._send(200, optimiser_list(cfg))
             return self._send(404, {"error": "not found"})
 
-        def do_POST(self):
+        def _post(self):
             # only same-origin pages may start or stop runs
             origin = self.headers.get("Origin")
             if origin and urlparse(origin).hostname not in ("127.0.0.1", "localhost"):
@@ -332,6 +400,61 @@ def make_handler(cfg, jobs):
                 n = runner.kill_all_sims()
                 _OUTSIDE.update(games=0, drivers=0)
                 return self._send(200, {"ok": True, "job": jobs.view(), "ended": n})
+            if path.startswith("/api/gauntlet/"):
+                fk = str(body.get("format") or "")
+                if fk not in formats.FORMATS:
+                    return self._send(400, {"error": "unknown format"})
+                fmt, folder = formats.get(fk), cfg.gauntlet_dir(fk)
+                try:
+                    if path == "/api/gauntlet/build":
+                        if not fmt.commander:
+                            return self._send(400, {"error": "Building from games you've faced works for Brawl formats; "
+                                                             "for others, paste lists or copy your decks in."})
+                        lim = int(body.get("limit") or 0) or None
+                        ok = start_gauntlet_build(cfg, fmt, bool(body.get("edhrec", True)), lim)
+                        return self._send(200 if ok else 409, {"job": GAUNTLET_JOB} if ok else {"error": "Already building."})
+                    if path == "/api/gauntlet/cancel":
+                        _GJ_STOP.set()
+                        return self._send(200, {"ok": True})
+                    if path == "/api/gauntlet/commander":
+                        p, d = gauntlet.add_commander(cfg, fmt, str(body.get("commander") or ""), forge_names(cfg),
+                                                      use_edhrec=True)
+                        return self._send(200, {"id": p.stem, "name": d.name, "cards": d.total})
+                    if path == "/api/gauntlet/paste":
+                        d = D.parse_arena(str(body.get("list") or ""), str(body.get("name") or "opponent"))
+                        if body.get("name"):
+                            d.name = str(body["name"])
+                        if not d.size:
+                            return self._send(400, {"error": "no cards found in that list"})
+                        p = d.save(Path(folder) / f"{gauntlet.slug(d.name) or 'opponent'}.dck")
+                        return self._send(200, {"id": p.stem, "name": d.name, "cards": d.total})
+                    if path == "/api/gauntlet/copy":
+                        stem = str(body.get("deck") or "")
+                        src = cfg.decks_dir / f"{stem}.dck"
+                        if not re.fullmatch(r"[A-Za-z0-9_.-]+", stem) or not src.exists():
+                            return self._send(400, {"error": "no such deck"})
+                        d = D.read_dck(src)
+                        d.arena_id = ""   # a copy, not the synced original
+                        p = d.save(Path(folder) / f"{gauntlet.slug(d.name) or stem}.dck")
+                        return self._send(200, {"id": p.stem, "name": d.name, "cards": d.total})
+                    if path == "/api/gauntlet/remove":
+                        stem = str(body.get("id") or "")
+                        if stem == "*":
+                            n = 0
+                            for p in gauntlet.list_decks(folder):
+                                p.unlink(); n += 1
+                            return self._send(200, {"ok": True, "removed": n})
+                        if not re.fullmatch(r"[A-Za-z0-9_.-]+", stem) or stem.startswith("."):
+                            return self._send(400, {"error": "bad id"})
+                        p = Path(folder) / f"{stem}.dck"
+                        if p.exists():
+                            p.unlink()
+                        return self._send(200, {"ok": True})
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+                except Exception as e:   # network trouble etc.: say so instead of dropping the request
+                    return self._send(502, {"error": f"That didn't work: {e}"})
+                return self._send(404, {"error": "not found"})
             if path == "/api/decks/sync":
                 return self._send(200, arena_decks.sync(cfg, force=True))
             if path == "/api/decks/remove":
@@ -355,7 +478,9 @@ def make_handler(cfg, jobs):
 
 class _Server(ThreadingHTTPServer):
     # never share a port with another program (on Windows SO_REUSEADDR would let us silently steal it)
-    allow_reuse_address = False
+    # Windows: SO_REUSEADDR would let us silently share a port with another program, so leave it off there.
+    # Elsewhere it only allows a quick restart while the old socket is closing, so turn it on.
+    allow_reuse_address = os.name != "nt"
 
 
 ON_SHOW = None   # set by the desktop app: brings its window forward

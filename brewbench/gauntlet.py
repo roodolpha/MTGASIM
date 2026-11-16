@@ -151,3 +151,91 @@ def from_log(reader, book, folder, forge_names, events=("Brawl",), log=print, us
         made.append((path, n))
         log(f"  {c} (faced {n}x)")
     return made
+
+
+# ---------------------------------------------------------------- for the app (Decks > Opponents)
+def describe(folder):
+    """[{id, name, commander, cards}] for the decks in a gauntlet folder."""
+    out = []
+    for p in list_decks(folder):
+        try:
+            d = D.read_dck(p)
+        except Exception:
+            continue
+        out.append({"id": p.stem, "name": d.name, "commander": d.commanders[0] if d.commanders else None,
+                    "cards": d.total})
+    return out
+
+
+def faced_commanders(cfg, fmt_key):
+    """{commander name: (times faced, Counter of cards seen)} for one format, from the Arena log and the game
+    tracker's full history."""
+    from . import arena_log, cards as C, share
+    book = C.CardBook(cfg.cache_dir / "cards.json")
+    logs = arena_log.find_logs(cfg.get("arena_log"))
+    games = dict(arena_log.read_all(logs).matches) if logs else {}
+    try:
+        tracked = json.loads((cfg.home / "tracker" / "matches.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        tracked = {}
+    for mid, t in (tracked or {}).items():
+        if mid not in games:
+            m = share._from_tracker(t)
+            if m is not None:
+                games[mid] = m
+    faced, seen = Counter(), {}
+    for m in games.values():
+        if share.event_format(m.event) != fmt_key:
+            continue
+        for g in m.opp_commanders:
+            c = book.name(g)
+            if not c:
+                continue
+            c = D.clean_name(c)
+            faced[c] += 1
+            seen.setdefault(c, Counter()).update(D.clean_name(n) for n in (book.name(x) for x in m.opp_seen) if n)
+    book.save()
+    return {c: (n, seen.get(c, Counter())) for c, n in faced.most_common()}
+
+
+def build_faced(cfg, fmt, forge_names, use_edhrec=True, limit=None, progress=None, stop=None):
+    """One opponent deck per commander you've faced in this (Brawl) format, most-faced first.
+    Skips commanders already in the gauntlet. Returns (made, skipped)."""
+    folder = Path(cfg.gauntlet_dir(fmt.key))
+    folder.mkdir(parents=True, exist_ok=True)
+    have = {(d["commander"] or "").lower() for d in describe(folder)}
+    todo = [(c, n, s) for c, (n, s) in faced_commanders(cfg, fmt.key).items() if c.lower() not in have]
+    if limit:
+        todo = todo[:limit]
+    made, skipped = [], []
+    for i, (c, n, s) in enumerate(todo):
+        if stop is not None and stop.is_set():
+            break
+        if progress:
+            progress(i, len(todo), c)
+        if c not in forge_names:
+            skipped.append(f"{c} (not in Forge yet)")
+            continue
+        try:
+            deck = brawl_deck(c, [x for x, _ in s.most_common()], forge_names, size=fmt.deck_size, use_edhrec=use_edhrec)
+            deck.save(folder / f"{slug(c)}.dck")
+            made.append(c)
+        except Exception as e:
+            skipped.append(f"{c} ({e})")
+    if progress:
+        progress(len(todo), len(todo), "")
+    return made, skipped
+
+
+def add_commander(cfg, fmt, commander, forge_names, use_edhrec=True):
+    """An opponent deck for a commander you name, from EDHREC's average list."""
+    names = {n.lower(): n for n in forge_names}
+    c = names.get(D.clean_name(commander).lower())
+    if not c:
+        raise ValueError(f"Forge doesn't know a card called {commander!r}")
+    deck = brawl_deck(c, [], forge_names, size=fmt.deck_size, use_edhrec=use_edhrec)
+    if deck.size - sum(q for n, q in deck.main.items() if n in D.BASICS) < 20:
+        raise ValueError(f"Couldn't find a list for {c} (EDHREC had nothing usable)")
+    folder = Path(cfg.gauntlet_dir(fmt.key))
+    folder.mkdir(parents=True, exist_ok=True)
+    return deck.save(folder / f"{slug(c)}.dck"), deck

@@ -70,6 +70,11 @@ def status(cfg):
         except OSError:
             pass
     out["decks"] = len(list(cfg.decks_dir.glob("*.dck")))
+    try:
+        from . import formats as _F
+        out["opponents"] = {k: len(list(cfg.gauntlet_dir(k).glob("*.dck"))) for k in _F.FORMATS}
+    except Exception:
+        out["opponents"] = {}
     out["ready"] = out["forge"]["ok"] and out["java"]["ok"]
     out["jobs"] = JOBS
     return out

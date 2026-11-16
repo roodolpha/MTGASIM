@@ -80,3 +80,21 @@ def test_update_check_compares_versions(tmp_path):
     f.write_text('{"version": "0.0.1", "url": "https://x/setup.exe"}')
     assert not updates.check(force=True, url=f.as_uri())["newer"]
     assert updates.vtuple("v0.10.0") > updates.vtuple("0.9.9")
+
+
+def test_build_faced_makes_one_deck_per_new_commander(tmp_path, monkeypatch):
+    from collections import Counter
+    from brewbench import formats, gauntlet
+    cfg = Config(tmp_path / "home")
+    fmt = formats.get("brawl")
+    monkeypatch.setattr(gauntlet, "faced_commanders", lambda cfg, k: {
+        "Tam, the Possibility": (5, Counter({"Opt": 2})), "Unknown Guy": (2, Counter()), "Kaalia": (1, Counter())})
+    def fake(c, seen, names, size=99, use_edhrec=True):
+        d = D.Deck(name=c, commanders=[c]); d.main["Island"] = size; return d
+    monkeypatch.setattr(gauntlet, "brawl_deck", fake)
+    (cfg.gauntlet_dir("brawl")).mkdir(parents=True, exist_ok=True)
+    D.Deck(name="Kaalia", commanders=["Kaalia"], main=Counter({"Plains": 99})).save(cfg.gauntlet_dir("brawl") / "kaalia.dck")
+    made, skipped = gauntlet.build_faced(cfg, fmt, {"Tam, the Possibility", "Kaalia"})
+    assert made == ["Tam, the Possibility"]                      # Kaalia already there
+    assert skipped and "Unknown Guy" in skipped[0]               # not in Forge
+    assert [d["commander"] for d in gauntlet.describe(cfg.gauntlet_dir("brawl"))] == ["Kaalia", "Tam, the Possibility"]
