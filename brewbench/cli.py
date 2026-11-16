@@ -301,6 +301,11 @@ def cmd_optimise(cfg, a):
     print(opt.run(max_tests=a.max_tests, until=until))
 
 
+def cmd_app(cfg, a):
+    from . import app
+    raise SystemExit(app.main(["--selftest"] if a.selftest else ["--background"] if a.background else []))
+
+
 def cmd_serve(cfg, a):
     from . import server
     server.serve(cfg, a.port, open_browser=not a.no_browser, track=not a.no_track)
@@ -439,6 +444,10 @@ def main(argv=None):
     s.add_argument("--holdout", type=int, default=400, help="games per hold-out run")
     s.set_defaults(fn=cmd_optimise)
 
+    s = sub.add_parser("app", help="open Brewbench in its own window, with a tray icon")
+    s.add_argument("--background", action="store_true", help="start in the tray only")
+    s.add_argument("--selftest", action="store_true", help=argparse.SUPPRESS)
+    s.set_defaults(fn=cmd_app)
     s = sub.add_parser("serve", help="open the local dashboard")
     s.add_argument("--port", type=int, default=8780)
     s.add_argument("--no-browser", action="store_true")

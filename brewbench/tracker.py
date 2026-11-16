@@ -112,6 +112,9 @@ def run(cfg, log=print, stop=None):
                 if store:
                     last = max(store.values(), key=lambda m: m.get("end") or 0)
                     log(f"Tracker: saved a {last['result']} ({last['turns']} turns).")
+                if cfg.get("share_auto") and cfg.get("share_id"):
+                    from . import share
+                    share.share_soon(cfg)
     except Exception as e:
         STATE.update(status="stopped by an error", error=repr(e))
         log(f"Tracker stopped: {e!r}")

@@ -8,8 +8,13 @@ datas = [
     (os.path.join(root, "brewbench", "harness"), "brewbench/harness"),
 ]
 
-app = Analysis([os.path.join(root, "packaging", "launch.py")], pathex=[root], datas=datas)
-cli = Analysis([os.path.join(root, "packaging", "cli_launch.py")], pathex=[root], datas=datas)
+# the app window (pywebview on Windows' WebView2) and tray icon (pystray); hooks-contrib covers most of it
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+datas += collect_data_files("webview")
+hidden = collect_submodules("webview.platforms") + ["pystray._win32", "clr", "PIL.Image"]
+
+app = Analysis([os.path.join(root, "packaging", "launch.py")], pathex=[root], datas=datas, hiddenimports=hidden)
+cli = Analysis([os.path.join(root, "packaging", "cli_launch.py")], pathex=[root], datas=datas, hiddenimports=hidden)
 
 app_pyz = PYZ(app.pure)
 cli_pyz = PYZ(cli.pure)

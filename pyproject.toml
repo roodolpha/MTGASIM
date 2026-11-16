@@ -4,12 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brewbench"
-version = "0.4.1"
+version = "0.5.0"
 description = "Simulate your MTG Arena decks against a gauntlet using Forge's AI"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.9"
 dependencies = []
+
+[project.optional-dependencies]
+# the desktop window and tray icon (brewbench app); the command line and dashboard need none of these
+app = ["pywebview>=5", "pystray>=0.19", "pillow>=10"]
 
 [project.scripts]
 brewbench = "brewbench.cli:main"
@@ -19,4 +23,4 @@ mtgasim = "brewbench.cli:main"   # old name
 packages = ["brewbench", "mtgasim"]
 
 [tool.setuptools.package-data]
-brewbench = ["harness/*.jar", "web/*.html"]
+brewbench = ["harness/*.jar", "web/*.html", "web/*.png"]

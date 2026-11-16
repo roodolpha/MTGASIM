@@ -292,6 +292,51 @@ async function settings() {
    <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
   $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
   $('#ssetup').onclick = () => show('setup');
+  shareBox();
+}
+
+async function shareBox() {
+  const sh = await api('/api/share');
+  const last = sh.last ? `Last sent ${new Date(sh.last.at * 1000).toLocaleString()}: ${sh.last.matches} games, ${sh.last.sims} sim summaries${sh.last.decks ? ', ' + sh.last.decks + ' lists' : ''}.` : 'Nothing sent yet.';
+  const el = document.createElement('section');
+  el.className = 'panel'; el.id = 'sharebox';
+  el.innerHTML = `<div class="secthead" style="margin:0 0 6px"><h2>Share with Brewbench</h2><a href="${esc(sh.site)}" target="_blank" rel="noopener">Open the site →</a></div>
+  <p class="dim" style="margin:0 0 14px;max-width:760px">Optional. Your games feed the site's meta, matchups and leaderboards. What goes up: the day, format, result, your deck's colours and commander, the opponent's colours and commander, your rank, and your sim results. Never your Arena name, your opponents' names or your account. Only what you see under "See exactly what's sent".</p>
+  <div class="form">
+    <label>Name on the site<input id="shname" value="${esc(sh.name)}" placeholder="leave empty to stay anonymous" maxlength="24" style="min-width:260px"></label>
+    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shpub" ${sh.public ? 'checked' : ''} style="min-height:auto"> Show me on leaderboards</label>
+    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shlists" ${sh.lists ? 'checked' : ''} style="min-height:auto"> Share my decklists too</label>
+    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shauto" ${sh.auto ? 'checked' : ''} style="min-height:auto"> Send new games automatically</label>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center">
+    <button class="btn" id="shgo">${sh.registered ? 'Save and send now' : 'Start sharing'}</button>
+    <button class="btn ghost" id="shprev">See exactly what's sent</button>
+    ${sh.registered ? '<button class="btn ghost" id="shforget" style="border-color:var(--loss);color:var(--loss)">Remove everything from the site</button>' : ''}
+  </div>
+  <p id="shmsg" class="dim" style="margin:12px 0 0" aria-live="polite">${sh.busy ? 'Sending…' : sh.error ? '<span class="err">Last try failed: ' + esc(sh.error) + '</span>' : esc(last)}</p>
+  <pre id="shpre" style="display:none;white-space:pre-wrap;max-height:320px;overflow:auto;background:#0B0B0C;border-radius:10px;padding:12px;font-size:12px;margin:12px 0 0"></pre>`;
+  const old = $('#sharebox'); old ? old.replaceWith(el) : $('#main').appendChild(el);
+  const body = now => ({name: $('#shname').value.trim(), public: $('#shpub').checked, lists: $('#shlists').checked, auto: $('#shauto').checked, now});
+  $('#shgo').onclick = async () => {
+    if (!sh.registered && !confirm('Start sharing your games with the Brewbench site? You can remove everything later.')) return;
+    const r = await api('/api/share', body(true));
+    if (r.error) { $('#shmsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>'; return; }
+    $('#shmsg').textContent = 'Sending… the first time can take a minute.';
+    const wait = async () => { const st = await api('/api/share'); if (st.busy) return setTimeout(wait, 1500); shareBox(); };
+    setTimeout(wait, 1500);
+  };
+  $('#shprev').onclick = async () => {
+    $('#shpre').style.display = 'block'; $('#shpre').textContent = 'Working it out…';
+    const p = await api('/api/share/preview');
+    $('#shpre').textContent = p.error ? p.error : `${p.matches} real games, ${p.sims} sim summaries, ${p.decks} lists. A few examples:\n\n` + JSON.stringify(p.sample, null, 1);
+  };
+  const fg = $('#shforget');
+  if (fg) fg.onclick = async () => {
+    if (!confirm('Delete everything you have uploaded from the Brewbench site and unlink this PC? This can\'t be undone.')) return;
+    const r = await api('/api/share/forget', {});
+    $('#shmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Done: it\'s all gone from the site.';
+    if (!r.error) setTimeout(shareBox, 1200);
+  };
 }
 
 async function poll() {

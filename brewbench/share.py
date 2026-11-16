@@ -20,6 +20,7 @@ from . import __version__, arena_log, cards as C, decks as D, runner
 from .optimiser import deck_hash
 
 DEFAULT_API = "https://brewbench-server.roododger.workers.dev"   # moves to api.brewbench.gg if the domain is bought
+SITE_URL = "https://mtgasim.roododger.workers.dev"
 
 
 def event_format(event: str):
@@ -239,3 +240,65 @@ def build_payload(cfg, include_lists=False, log_paths=None):
             decks_out[h] = {"hash": h, "format": meta["format"], "colours": _colours(my.main, ident, commander),
                             "commander": commander, "list": my.to_arena()}
     return {"matches": matches, "sims": sims, "decks": list(decks_out.values())}
+
+
+# ---------------------------------------------------------------- used by the app (Settings > Sharing)
+import threading as _threading
+
+_lock = _threading.Lock()
+STATUS = {"busy": False, "error": None}
+
+
+def settings(cfg):
+    return {"registered": bool(cfg.get("share_id") and cfg.get("share_key")),
+            "name": cfg.get("share_name") or "", "public": bool(cfg.get("share_public")),
+            "lists": bool(cfg.get("share_lists")), "auto": bool(cfg.get("share_auto")),
+            "last": cfg.get("share_last"), "busy": STATUS["busy"], "error": STATUS["error"],
+            "site": SITE_URL}
+
+
+def share_now(cfg):
+    """Register this PC if it isn't yet, push name/public changes, then upload everything.
+    Re-sending games the site already has is harmless: it keeps one copy of each."""
+    with _lock:
+        STATUS.update(busy=True, error=None)
+        try:
+            c = Client(cfg)
+            name = (cfg.get("share_name") or "").strip() or None
+            public = bool(cfg.get("share_public") and name)
+            if not c.registered:
+                c.register(name, public)
+            elif (cfg.get("share_sent_name"), cfg.get("share_sent_public")) != (name, public):
+                c.update(name, public)
+            r = c.upload(build_payload(cfg, bool(cfg.get("share_lists"))))
+            cfg.data.update(share_last={"at": int(time.time()), **r}, share_sent_name=name, share_sent_public=public)
+            cfg.save()
+            return r
+        except Exception as e:
+            STATUS["error"] = str(e)
+            raise
+        finally:
+            STATUS["busy"] = False
+
+
+def share_soon(cfg):
+    """share_now in the background (after a game, or when the app starts). Never raises."""
+    if STATUS["busy"]:
+        return False
+
+    def run():
+        try:
+            share_now(cfg)
+        except Exception:
+            pass   # kept in STATUS["error"] for the Settings page
+    _threading.Thread(target=run, name="brewbench-share", daemon=True).start()
+    return True
+
+
+def forget(cfg):
+    with _lock:
+        r = Client(cfg).forget()
+        for k in ("share_last", "share_sent_name", "share_sent_public", "share_auto"):
+            cfg.data.pop(k, None)
+        cfg.save()
+        return r

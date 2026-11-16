@@ -192,6 +192,17 @@ def make_handler(cfg, jobs):
                 data = f.read_text(encoding="utf-8") if f.exists() else '{"matches":[],"cards":{}}'
                 page = TRACKER_PAGE.read_text(encoding="utf-8").replace("/*__DATA__*/{}", data.replace("</", "<\\/"))
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+            if path == "/api/share":
+                from . import share
+                return self._send(200, share.settings(cfg))
+            if path == "/api/share/preview":
+                from . import share
+                try:
+                    p = share.build_payload(cfg, bool(cfg.get("share_lists")))
+                except Exception as e:
+                    return self._send(500, {"error": str(e)})
+                return self._send(200, {"matches": len(p["matches"]), "sims": len(p["sims"]), "decks": len(p["decks"]),
+                                        "sample": {k: v[:5] for k, v in p.items()}})
             if path == "/api/tracker":
                 from . import tracker
                 return self._send(200, tracker.STATE)
@@ -267,6 +278,34 @@ def make_handler(cfg, jobs):
                         except (TypeError, ValueError):
                             return self._send(400, {"error": f"bad {k}"})
                 return self._send(200, {"ok": True})
+            if path == "/api/app/show":   # a second copy of the app was started: show this one's window
+                if ON_SHOW is None:
+                    return self._send(200, {"ok": False})
+                try:
+                    ON_SHOW()
+                except Exception:
+                    return self._send(200, {"ok": False})
+                return self._send(200, {"ok": True})
+            if path == "/api/share":
+                from . import share
+                name = str(body.get("name") or "").strip()
+                if name and not re.fullmatch(r"[A-Za-z0-9 _.#-]{3,24}", name):
+                    return self._send(400, {"error": "Names are 3-24 letters, numbers, spaces or _ . - #"})
+                cfg.data.update(share_name=name or None, share_public=bool(body.get("public")) and bool(name),
+                                share_lists=bool(body.get("lists")), share_auto=bool(body.get("auto")))
+                cfg.save()
+                if body.get("now"):
+                    share.share_soon(cfg)
+                return self._send(200, share.settings(cfg))
+            if path == "/api/share/forget":
+                from . import share
+                if not share.settings(cfg)["registered"]:
+                    return self._send(200, {"ok": True})
+                try:
+                    share.forget(cfg)
+                except Exception as e:
+                    return self._send(502, {"error": str(e)})
+                return self._send(200, {"ok": True})
             if path == "/api/stop":
                 jobs.stop()
                 return self._send(200, {"ok": True, "job": jobs.view()})
@@ -296,11 +335,19 @@ class _Server(ThreadingHTTPServer):
     allow_reuse_address = False
 
 
+ON_SHOW = None   # set by the desktop app: brings its window forward
+JOBS = None
+
+
 def serve(cfg, port=8780, open_browser=True, track=True):
-    jobs = Jobs()
+    global JOBS
+    jobs = JOBS = Jobs()
     if track:
         from . import tracker
         tracker.start(cfg)
+    if cfg.get("share_auto") and cfg.get("share_id"):
+        from . import share
+        share.share_soon(cfg)   # catch up on games played while the app was closed
     try:
         httpd = _Server(("127.0.0.1", port), make_handler(cfg, jobs))
     except OSError:

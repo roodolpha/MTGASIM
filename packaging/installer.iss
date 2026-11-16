@@ -13,7 +13,7 @@ AppVersion={#AppVersion}
 AppPublisher=brewbench
 AppPublisherURL=https://github.com/roodolpha/brewbench
 DefaultDirName={localappdata}\Programs\brewbench
-DefaultGroupName=brewbench
+DefaultGroupName=Brewbench
 PrivilegesRequired=lowest
 OutputDir=..\dist
 OutputBaseFilename=brewbench-setup-{#AppVersion}
@@ -23,6 +23,10 @@ WizardStyle=modern
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
 UninstallDisplayIcon={app}\brewbench.exe
+SetupIconFile=brewbench.ico
+; close a running copy before upgrading or removing it
+CloseApplications=force
+RestartApplications=no
 
 [Tasks]
 Name: "startup"; Description: "Start with Windows (records your Arena games in the background)"; Flags: unchecked
@@ -32,10 +36,14 @@ Name: "desktopicon"; Description: "Desktop shortcut"; Flags: unchecked
 Source: "..\dist\brewbench\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
 [Icons]
-Name: "{group}\brewbench"; Filename: "{app}\brewbench.exe"
-Name: "{group}\Uninstall brewbench"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\brewbench"; Filename: "{app}\brewbench.exe"; Tasks: desktopicon
-Name: "{userstartup}\brewbench"; Filename: "{app}\brewbench.exe"; Parameters: "--background"; Tasks: startup
+Name: "{group}\Brewbench"; Filename: "{app}\brewbench.exe"
+Name: "{group}\Uninstall Brewbench"; Filename: "{uninstallexe}"
+Name: "{userdesktop}\Brewbench"; Filename: "{app}\brewbench.exe"; Tasks: desktopicon
+
+[Registry]
+; "Start with Windows": the same setting as the tick in the app's tray menu
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Brewbench"; ValueData: """{app}\brewbench.exe"" --background"; Tasks: startup
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Brewbench"; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
 Filename: "{app}\brewbench.exe"; Description: "Open Brewbench now"; Flags: nowait postinstall skipifsilent
