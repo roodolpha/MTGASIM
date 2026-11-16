@@ -1,8 +1,8 @@
 # Privacy
 
-*Plain-English version. Last updated: [DATE OF LAUNCH].*
+*Plain-English version. Last updated: 16 November 2026.*
 
-**Who's responsible:** [YOUR NAME OR TRADING NAME], who runs brewbench. Contact: [CONTACT EMAIL].
+**Who's responsible:** roodolpha, the developer who runs Brewbench. Contact: open an issue at [github.com/roodolpha/MTGASIM/issues](https://github.com/roodolpha/MTGASIM/issues), or for anything you'd rather not post publicly, ask there for a private contact and you'll be given one.
 
 ## The app on your PC
 
@@ -12,27 +12,28 @@ it reads from Arena's own log file. Nothing leaves your PC unless you choose to 
 It reads Arena's `Player.log` and nothing else from Arena. It doesn't read Arena's memory, change the game, or
 send anything to Wizards.
 
-It talks to the internet for: card names and legality (Scryfall), downloading Java and Forge the first time,
-checking GitHub for a newer version, and, only if you turn it on, EDHREC's average decklists.
+It talks to the internet for: card names, art and legality (Scryfall), downloading Java and Forge the first time,
+checking the Brewbench website for a newer version, EDHREC's average decklists when you build opponent decks
+(you can untick that), and the sharing below, only if you turn it on.
 
-## If you share (`brewbench share`, off unless you run it)
+## If you share (off unless you turn it on in Settings)
 
 **What we receive:** for each of your real Arena games: the day (not the time), format, result, your deck's
 colours or commander, a scrambled fingerprint of your list, the opponent's colours or commander as far as you saw
-them, and your rank before the game. Summaries of your simulator runs. Your decklists only if you pass `--lists`.
+them, and your rank before the game. Summaries of your simulator runs. Your decklists only if you tick "Share my decklists too".
 A random uploader ID and key that your copy of brewbench makes up.
 
 **What we never receive:** your Arena name or account ID, your opponents' names, Arena's match IDs (they're
 scrambled with your uploader ID first), your email, your IP address beyond what any web server sees in passing.
 
-**Public or not:** you're anonymous unless you pick a display name *and* `--public`. Anonymous games only count
+**Public or not:** you're anonymous unless you pick a display name *and* tick "Show me on leaderboards". Anonymous games only count
 towards the meta and matchup numbers. Public players appear on leaderboards and get a player page.
 
-**Why we hold it (lawful basis):** your consent, given when you run `brewbench share`. You can withdraw it at any
+**Why we hold it (lawful basis):** your consent, given when you press Start sharing. You can withdraw it at any
 time.
 
-**Deleting it:** `brewbench share --forget` deletes everything your uploader ID sent, straight away. Decklists you
-shared aren't linked to you and stay. To ask for anything else, email [CONTACT EMAIL].
+**Deleting it:** Settings > Share with Brewbench > "Remove everything from the site" (or `brewbench share --forget`) deletes everything your uploader ID sent, straight away. Decklists you
+shared aren't linked to you and stay. To ask for anything else, use the contact above.
 
 **Where it lives:** Cloudflare's servers (their D1 database). Backups are kept for up to 30 days.
 
