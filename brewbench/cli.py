@@ -155,7 +155,21 @@ def cmd_deck_check(cfg, a):
 def cmd_deck_list(cfg, a):
     for p in sorted(cfg.decks_dir.glob("*.dck")):
         d = D.read_dck(p)
-        print(f"  {p.stem:<32} {d.size:>3} cards" + (f"  ({', '.join(d.commanders)})" if d.commanders else ""))
+        print(f"  {p.stem:<32} {d.total:>3} cards" + (f"  [{d.format}]" if d.format else "")
+              + (f"  ({', '.join(d.commanders)})" if d.commanders else ""))
+
+
+def cmd_deck_sync(cfg, a):
+    from . import arena_decks
+    r = arena_decks.sync(cfg, force=True)
+    if r.get("error"):
+        raise SystemExit(r["error"])
+    for n in r["added"]:
+        print(f"  added   {n}")
+    for n in r["updated"]:
+        print(f"  updated {n}")
+    if not (r["added"] or r["updated"]):
+        print("Your decks already match Arena.")
 
 
 def cmd_deck_from_log(cfg, a):
@@ -375,6 +389,7 @@ def main(argv=None):
     s.add_argument("--format", required=True, help=fmt_help)
     s.set_defaults(fn=cmd_deck_check)
     dk.add_parser("list", help="saved decks").set_defaults(fn=cmd_deck_list)
+    dk.add_parser("sync", help="import or refresh every deck in your Arena collection").set_defaults(fn=cmd_deck_sync)
     s = dk.add_parser("from-log", help="decks you've saved or played with in Arena")
     s.add_argument("--pick", type=int)
     s.add_argument("--all", action="store_true")

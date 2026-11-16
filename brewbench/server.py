@@ -1,6 +1,8 @@
 """The local dashboard: a small web server on your own PC (127.0.0.1 only) with a JSON API over your
 decks, runs and optimiser results, and a page that shows them. It can also start runs."""
 import json
+import logging
+import re
 import threading
 import time
 import webbrowser
@@ -8,7 +10,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import __version__, decks as D, formats, gauntlet, runner, stats
+from . import __version__, arena_decks, decks as D, formats, gauntlet, runner, stats
+
+log = logging.getLogger("brewbench.server")
 
 PAGE = Path(__file__).resolve().parent / "web" / "dashboard.html"
 TRACKER_PAGE = Path(__file__).resolve().parent / "web" / "tracker.html"
@@ -105,11 +109,13 @@ def run_detail(cfg, run_id):
 
 
 def deck_list(cfg):
+    arena_decks.sync_soon(cfg)   # in the background: new Arena decks show up on the next refresh
     out = []
     for p in sorted(cfg.decks_dir.glob("*.dck")):
         d = D.read_dck(p)
-        out.append({"id": p.stem, "name": d.name, "cards": d.size, "commanders": d.commanders,
-                    "list": d.to_arena()})
+        out.append({"id": p.stem, "name": d.name, "cards": d.total, "main": d.size, "commanders": d.commanders,
+                    "format": d.format, "from_arena": bool(d.arena_id), "list": d.to_arena(),
+                    "updated": p.stat().st_mtime})
     return out
 
 
@@ -264,6 +270,13 @@ def make_handler(cfg, jobs):
             if path == "/api/stop":
                 jobs.stop()
                 return self._send(200, {"ok": True, "job": jobs.view()})
+            if path == "/api/decks/sync":
+                return self._send(200, arena_decks.sync(cfg, force=True))
+            if path == "/api/decks/remove":
+                stem = str(body.get("id") or "")
+                if not re.fullmatch(r"[A-Za-z0-9_.-]+", stem) or stem.startswith("."):
+                    return self._send(400, {"error": "bad deck id"})
+                return self._send(200, {"ok": arena_decks.remove(cfg, stem)})
             if path == "/api/decks":
                 text = body.get("list") or ""
                 deck = D.parse_arena(text, body.get("name") or "deck")
@@ -272,7 +285,7 @@ def make_handler(cfg, jobs):
                 if not deck.size:
                     return self._send(400, {"error": "no cards found in that list"})
                 p = deck.save(cfg.decks_dir / f"{gauntlet.slug(deck.name)}.dck")
-                return self._send(200, {"id": p.stem, "cards": deck.size})
+                return self._send(200, {"id": p.stem, "cards": deck.total})
             return self._send(404, {"error": "not found"})
 
     return H

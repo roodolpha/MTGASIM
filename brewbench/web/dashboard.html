@@ -53,7 +53,7 @@ td.n,th.n{text-align:right}
 .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:80px}
 .bar i{display:block;height:100%;background:var(--sim)}
 .bar i.bad{background:var(--loss)}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:24px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:24px;align-items:start}
 .panel{background:var(--panel);border-radius:16px;padding:20px 22px;min-width:0}
 .panel h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
 .btn{min-height:44px;padding:0 20px;border:0;border-radius:999px;background:var(--hot);color:#1A0D07;font:700 15px system-ui,sans-serif;cursor:pointer}
@@ -79,6 +79,13 @@ textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:
 .tabs button{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(242,238,230,.35);background:rgba(15,15,16,.5);color:var(--text);font:600 15px system-ui,sans-serif;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:700}
 .back{all:unset;cursor:pointer;color:var(--text);font-weight:600;font-size:14px;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;background:rgba(15,15,16,.6);border:1px solid rgba(242,238,230,.35);align-self:flex-start}
+.strip{display:flex;flex-wrap:wrap;gap:8px 40px;align-items:baseline;padding:4px 0 2px}
+.strip b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:30px;letter-spacing:-.02em;margin-right:6px}
+.strip span{color:var(--dim);font-size:14px}
+.plain{display:flex;flex-direction:column;gap:6px}
+.plain .back{background:none;border:0;padding:0;color:var(--dim)}
+tr.go{cursor:pointer}tr.go:hover td{background:#1E1E22}
+td .sub{display:block;font-size:12.5px;color:var(--dim)}
 .check{display:flex;gap:16px;align-items:flex-start}
 .check .mark{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;background:#2A2A2F}
 .check .mark.ok{background:var(--sim);color:#0F0F10}
@@ -89,16 +96,15 @@ textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:
 </head>
 <body>
 <header>
-<a class="logo" href="#runs">brew<span>bench</span></a>
+<a class="logo" href="/tracker">brew<span>bench</span></a>
 <nav aria-label="Main">
 <a href="/tracker">My games</a>
-<a href="#runs" data-view="runs">Sim runs</a>
+<a href="#runs" data-view="runs">Sims</a>
 <a href="#decks" data-view="decks">Decks</a>
 <a href="#optimiser" data-view="optimiser">Optimiser</a>
 <a href="#settings" data-view="settings">Settings</a>
 </nav>
 <div id="job" aria-live="polite"></div>
-<a class="cta" href="#new">Run the sim</a>
 </header>
 <main id="main"></main>
 <script>
@@ -136,42 +142,29 @@ function deckArt(d) {
 
 async function runs() {
   const all = await api('/api/runs');
-  if (!all.length) { $('#main').innerHTML = hero('', `<div class="kick">Sim runs</div><h1>Nothing simulated yet</h1><p>Add a deck, fill a gauntlet, then hit Run the sim. Leave it overnight and you'll have a real answer by breakfast.</p><div><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="#new">Run the sim</a></div>`, 'short'); return; }
-  const fmts = [...new Set(all.map(r => r.format))];
-  if (FMT && !fmts.includes(FMT)) FMT = '';
-  const list = all.filter(r => !FMT || r.format === FMT);
-  const top = list[0], s = top.summary || {}, deck = (top.deck || '').split(/[\\/]/).pop();
-  const tabs = fmts.length > 1 ? `<div class="tabs" role="tablist" aria-label="Format">${['', ...fmts].map(f => `<button role="tab" aria-selected="${f === FMT}" data-fmt="${esc(f)}">${f ? esc(f) : 'All'}</button>`).join('')}</div>` : '';
-  $('#main').innerHTML = hero(art(deckArt(deck)), `${tabs}
-    <div class="kick">Latest run · ${esc(top.format)} · ${new Date(top.started * 1000).toLocaleDateString()}</div>
-    <h1>${esc(top.label)}</h1>
-    <div class="hstats"><div><b class="sim">${pct(s.win_rate)}</b> <span>when the bots play it</span></div>
-    <div><b>${s.games || 0}</b> <span>games</span></div>
-    <div><span>vs ${top.opponents.length} deck${top.opponents.length === 1 ? '' : 's'}</span></div></div>
-    <div><button class="btn" data-run="${esc(top.run)}">See the matchups</button></div>`) +
-    `<section><div class="secthead"><h2>Your runs</h2><span class="dim">${list.length} run${list.length === 1 ? '' : 's'}</span></div><div class="row" id="cards"></div></section>`;
-  $('#cards').innerHTML = list.map((r, i) => {
-    const s = r.summary || {}; const deck = (r.deck || '').split(/[\\/]/).pop();
-    return `<div class="card"><button class="open" data-run="${esc(r.run)}">
-      <div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"><span class="pos">#${i + 1}</span><span class="tag r">${esc(r.format)}</span></div>
-      <div class="body"><div class="name">${esc(r.label)}</div>
-      <div class="nums"><div><small>Sim win rate</small><b class="sim">${pct(s.win_rate)}</b></div><div><small>Games</small><b>${s.games || 0}</b></div></div>
-      <div class="dim" style="font-size:13px">vs ${r.opponents.length} deck${r.opponents.length === 1 ? '' : 's'} · ${new Date(r.started * 1000).toLocaleDateString()}</div></div>
-    </button></div>`; }).join('');
-  document.querySelectorAll('[data-run]').forEach(b => b.onclick = () => show('run', b.dataset.run));
-  document.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => { FMT = b.dataset.fmt; runs(); });
+  const head = `<div class="plain"><div class="secthead" style="margin:0"><h1 class="page">Sims</h1><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="#new">New run</a></div>`;
+  if (!all.length) { $('#main').innerHTML = head + `<p class="dim" style="margin:0">Nothing simulated yet. Add a deck, then start a run and leave it going.</p></div>`; return; }
+  const games = all.reduce((n, r) => n + ((r.summary || {}).games || 0), 0);
+  const best = all.filter(r => (r.summary || {}).games >= 50).sort((x, y) => y.summary.win_rate - x.summary.win_rate)[0];
+  $('#main').innerHTML = head + `<div class="strip"><div><b>${all.length}</b><span>runs</span></div><div><b>${games.toLocaleString()}</b><span>games simmed</span></div>${best ? `<div><b class="sim">${pct(best.summary.win_rate)}</b><span>best: ${esc(best.label)}</span></div>` : ''}</div></div>
+  <div class="panel"><table><thead><tr><th>Deck</th><th>Format</th><th class="n">Win rate</th><th class="n">Games</th><th class="n">Opponents</th><th class="n">Date</th></tr></thead><tbody>
+  ${all.map(r => { const s = r.summary || {}; const ci = s.ci95 && s.games ? `${pct(s.ci95[0])}–${pct(s.ci95[1])}` : '';
+    return `<tr class="go" data-run="${esc(r.run)}" tabindex="0"><td><b>${esc(r.label)}</b></td><td class="dim">${esc(r.format)}</td>
+    <td class="n"><b class="sim">${pct(s.win_rate)}</b>${ci ? `<span class="sub">${ci}</span>` : ''}</td><td class="n">${s.games || 0}</td><td class="n dim">${r.opponents.length}</td><td class="n dim">${new Date(r.started * 1000).toLocaleDateString()}</td></tr>`; }).join('')}
+  </tbody></table></div>`;
+  document.querySelectorAll('[data-run]').forEach(t => { t.onclick = () => show('run', t.dataset.run); t.onkeydown = e => { if (e.key === 'Enter') show('run', t.dataset.run); }; });
 }
 
 async function runPage(id) {
   const r = await api('/api/runs/' + encodeURIComponent(id));
   const s = r.summary; const deck = (r.deck || '').split(/[\\/]/).pop();
   const lo = s.ci95[0], hi = s.ci95[1];
-  $('#main').innerHTML = hero(art(deckArt(deck)), `<button class="back">← All runs</button>
-  <div class="kick">${esc(r.format)} · AI ${esc(r.ai)}</div>
-  <h1>${esc(r.label)}</h1>
-  <div class="hstats"><div><b class="sim">${pct(s.win_rate)}</b> <span>when the bots play it</span></div>
-  <div><b>${s.wins}–${s.losses}${s.draws ? '–' + s.draws : ''}</b> <span>over ${s.games} games</span></div></div>
-  <p>The real number's probably somewhere between ${pct(lo)} and ${pct(hi)}. On the play ${pct(s.on_play)}, on the draw ${pct(s.on_draw)}${s.avg_turns ? ', games last about ' + Math.round(s.avg_turns / 2) + ' turns each' : ''}.</p>`) + `
+  $('#main').innerHTML = `<div class="plain"><button class="back">← All sims</button>
+  <h1 class="page">${esc(r.label)}</h1><div class="dim">${esc(r.format)} · AI ${esc(r.ai)}</div>
+  <div class="strip"><div><b class="sim">${pct(s.win_rate)}</b><span>win rate (likely ${pct(lo)}–${pct(hi)})</span></div>
+  <div><b>${s.wins}–${s.losses}${s.draws ? '–' + s.draws : ''}</b><span>${s.games} games</span></div>
+  <div><b>${pct(s.on_play)}</b><span>on the play</span></div><div><b>${pct(s.on_draw)}</b><span>on the draw</span></div>
+  ${s.avg_turns ? `<div><b>${Math.round(s.avg_turns / 2)}</b><span>turns a game</span></div>` : ''}</div></div>
   <div class="grid2">
   <div class="panel"><h2 style="margin-bottom:8px">Matchups, worst first</h2>
   <table><thead><tr><th>Opponent</th><th class="n">Won</th><th></th><th class="n">Games</th></tr></thead><tbody>
@@ -185,21 +178,40 @@ async function runPage(id) {
   $('.back').onclick = () => show('runs');
 }
 
+let DFMT = '';
 async function decks() {
   DECKS = await api('/api/decks');
   const g = await api('/api/gauntlets');
-  const d0 = DECKS[0];
-  $('#main').innerHTML = hero(d0 ? art(deckArt(d0.id)) : '', `<div class="kick">Your decks</div><h1>${DECKS.length} deck${DECKS.length === 1 ? '' : 's'} on the bench</h1><p>Paste a list from Arena's Export button below, then send it through the sim.</p>`, 'short') + `
-  <section><div class="row">${DECKS.map(d => `
-    <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span></div>
-    <div class="body"><div class="name">${esc(d.name)}</div><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || 'no commander')}</div></div></div>`).join('') || '<div class="empty">No decks yet. Paste one below.</div>'}</div></section>
-  <div class="grid2"><div class="panel"><h2 style="margin-bottom:10px">Add a deck</h2>
-  <div style="display:flex;flex-direction:column;gap:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
+  const SHORT = {brawl: 'Historic Brawl', standardbrawl: 'Standard Brawl'};
+  const fname = k => SHORT[k] || ((STATUS.formats || []).find(f => f.key === k) || {}).name || k || 'Pasted';
+  const fmts = [...new Set(DECKS.map(d => d.format || '-'))].sort((x, y) => (x === '-') - (y === '-') || fname(x).localeCompare(fname(y)));
+  if (DFMT && !fmts.includes(DFMT)) DFMT = '';
+  const list = DECKS.filter(d => !DFMT || (d.format || '-') === DFMT).sort((x, y) => y.updated - x.updated);
+  const tabs = fmts.length > 1 ? `<div class="tabs" role="tablist" aria-label="Format"><button role="tab" aria-selected="${!DFMT}" data-dfmt="">All</button>${fmts.map(f => `<button role="tab" aria-selected="${f === DFMT}" data-dfmt="${esc(f)}">${esc(f === '-' ? 'Pasted' : fname(f))}</button>`).join('')}</div>` : '';
+  $('#main').innerHTML = `<div class="plain"><div class="secthead" style="margin:0"><h1 class="page">Decks</h1><button class="btn ghost" id="dsync">Refresh from Arena</button></div>
+  <p class="dim" style="margin:0">Your Arena decks come in on their own, sorted by format, and update when you edit them in Arena. <span id="dsmsg"></span></p></div>
+  ${tabs}
+  <section><div class="row">${list.map(d => `
+    <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span>${d.format ? `<span class="tag r">${esc(fname(d.format))}</span>` : ''}</div>
+    <div class="body"><div class="name">${esc(d.name)}</div><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || (d.from_arena ? 'From Arena' : 'Pasted in'))}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" style="min-height:36px;padding:0 14px;display:inline-flex;align-items:center;text-decoration:none;font-size:14px" href="#new" data-sim="${esc(d.id)}">Sim it</a><button class="btn ghost" style="min-height:36px;padding:0 14px;font-size:14px" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
+  <div class="grid2"><div class="panel"><details><summary style="cursor:pointer;font-weight:700">Paste a deck instead</summary>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
   <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>
-  <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></div>
+  <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></details></div>
   <div class="panel"><h2 style="margin-bottom:10px">Gauntlets</h2>
-  ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(k)}</b> <span class="dim">${v.length ? esc(v.join(', ')) : 'empty'}</span></p>`).join('')}
+  ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(fname(k))}</b> <span class="dim">${v.length ? v.length + ' opponent deck' + (v.length === 1 ? '' : 's') : 'empty'}</span></p>`).join('')}
   <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>brewbench gauntlet add standard decks_folder</code></p></div></div>`;
+  document.querySelectorAll('[data-dfmt]').forEach(b => b.onclick = () => { DFMT = b.dataset.dfmt; decks(); });
+  document.querySelectorAll('[data-sim]').forEach(b => b.onclick = e => { e.preventDefault(); show('new', b.dataset.sim); });
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    const d = DECKS.find(x => x.id === b.dataset.rm);
+    if (!confirm(`Remove ${d.name}?` + (d.from_arena ? ' It won\'t come back from Arena unless you re-add it there under a new deck.' : ''))) return;
+    await api('/api/decks/remove', {id: b.dataset.rm}); decks(); });
+  $('#dsync').onclick = async () => { $('#dsmsg').textContent = 'Checking…'; const r = await api('/api/decks/sync', {});
+    $('#dsmsg').textContent = r.error ? r.error : (r.added.length || r.updated.length) ? `${r.added.length} new, ${r.updated.length} updated.` : 'Already up to date.';
+    if (!r.error && (r.added.length || r.updated.length)) setTimeout(decks, 800); };
+  setTimeout(async () => { if (location.hash !== '#decks') return; const d = await api('/api/decks'); if (d.length !== DECKS.length) decks(); }, 5000);
   $('#dsave').onclick = async () => {
     const r = await api('/api/decks', {name: $('#dname').value, list: $('#dlist').value});
     $('#dmsg').textContent = r.error ? r.error : 'Saved (' + r.cards + ' cards)';
@@ -210,9 +222,7 @@ async function decks() {
 async function optimiser() {
   const list = await api('/api/optimiser');
   if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>brewbench optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
-  $('#main').innerHTML = hero(art(deckArt(list[0].deck)), `<div class="kick">Optimiser</div><h1>${esc(list[0].deck)}</h1>
-  <div class="hstats"><div><b class="sim">${list[0].accepted.length}</b> <span>swap${list[0].accepted.length === 1 ? '' : 's'} kept</span></div><div><b>${list[0].tested}</b> <span>tested</span></div></div>
-  <p>Every swap has to win a screen, a bigger confirm, then a hold-out against decks it never trained on. Most don't make it, which is the point.</p>`, 'short') + list.map(o => `<div class="panel"><h2>${esc(o.deck)}</h2>
+  $('#main').innerHTML = `<div class="plain"><h1 class="page">Optimiser</h1><p class="dim" style="margin:0">Each swap has to win a screen, a bigger confirm, then a hold-out against decks it never trained on.</p></div>` + list.map(o => `<div class="panel"><h2>${esc(o.deck)}</h2>
   <p class="dim" style="margin:4px 0 12px">${o.accepted.length} swap${o.accepted.length === 1 ? '' : 's'} kept out of ${o.tested} tested</p>
   <table><thead><tr><th>Swap</th><th>Got to</th><th class="n">Difference</th><th>Kept?</th></tr></thead><tbody>
   ${o.tried.slice().reverse().map(t => { const st = t.holdout ? 'hold-out' : t.confirm ? 'confirm' : 'screen'; const d = (t.holdout || t.confirm || t.screen || {}).diff;
@@ -220,15 +230,18 @@ async function optimiser() {
   </tbody></table></div>`).join('');
 }
 
-async function newRun() {
+async function newRun(pick) {
   DECKS = await api('/api/decks');
-  $('#main').innerHTML = hero(DECKS[0] ? art(deckArt(DECKS[0].id)) : '', `<div class="kick">New run</div><h1>Play it 1,000 times</h1><p>Plays your deck against that format's gauntlet on your own PC. Leave it going: more games, tighter numbers.</p>`, 'short') + `
+  $('#main').innerHTML = `<div class="plain"><button class="back" id="nback">← All sims</button><h1 class="page">New run</h1><p class="dim" style="margin:0">Plays your deck against that format's gauntlet in the background. More games, tighter numbers.</p></div>
   <div class="panel"><div class="form">
-  <label>Deck<select id="rdeck">${DECKS.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label>
+  <label>Deck<select id="rdeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === pick ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>
   <label>Format<select id="rfmt">${STATUS.formats.map(f => `<option value="${esc(f.key)}">${esc(f.name)}</option>`).join('')}</select></label>
   <label>Games<input id="rgames" type="number" min="1" max="20000" value="200" style="width:120px"></label>
   <button class="btn" id="rgo">Start</button> <button class="btn ghost" id="rstop">Stop</button></div>
   <p id="rmsg" class="dim" style="margin:12px 0 0"></p></div>`;
+  const nb = $('#nback'); if (nb) nb.onclick = () => show('runs');
+  const fit = () => { const d = DECKS.find(x => x.id === $('#rdeck').value); if (d && d.format) $('#rfmt').value = d.format; };
+  $('#rdeck').onchange = fit; fit();
   $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
   $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; };
 }
@@ -290,7 +303,7 @@ async function poll() {
   setTimeout(poll, 2000);
 }
 poll();
-Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; if (!route()) show(st.ready ? 'runs' : 'setup'); });
+Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; if (!route()) { if (st.ready) location.replace('/tracker'); else show('setup'); } });
 api('/api/update').then(u => { if (u.newer) { const b = document.createElement('a'); b.href = u.url; b.textContent = 'Update ' + u.latest + ' available'; b.style.cssText = 'color:var(--hot);font-weight:700'; $('#job').after(b); } });
 </script>
 </body>

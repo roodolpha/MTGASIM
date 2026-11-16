@@ -187,3 +187,92 @@ def read_all(paths=None) -> LogReader:
     for p in sorted(paths, key=lambda p: os.path.getmtime(p)):
         r.read(p)
     return r
+
+
+# Arena's own format names -> Brewbench format keys. Formats Forge can't sim (Gladiator, Explorer...) map to None.
+ARENA_FORMATS = {
+    "historicbrawl": "brawl", "directgamebrawlrebalanced": "brawl", "brawl": "standardbrawl",
+    "standard": "standard", "traditionalstandard": "standard",
+    "historic": "historic", "traditionalhistoric": "historic",
+    "timeless": "timeless", "traditionaltimeless": "timeless",
+    "alchemy": "alchemy", "traditionalalchemy": "alchemy",
+}
+
+
+@dataclass
+class CollectionDeck:
+    deck_id: str
+    name: str
+    arena_format: str
+    commanders: list
+    main: list             # grpIds, one entry per copy
+    side: list
+    updated: str = ""
+
+    @property
+    def format(self):
+        return ARENA_FORMATS.get((self.arena_format or "").lower())
+
+    @property
+    def precon(self):
+        return self.name.startswith("?=?Loc") or not self.name
+
+
+def _cards(zone):
+    out = []
+    for c in zone or []:
+        try:
+            out += [int(c["cardId"])] * int(c.get("quantity", 1))
+        except (KeyError, TypeError, ValueError):
+            pass
+    return out
+
+
+def collection(paths=None) -> dict:
+    """Every deck in your Arena collection, newest version of each: {deck_id: CollectionDeck}.
+    Arena writes the whole list (cards, commander, format) in its StartHook reply each time it starts,
+    and each later save as a DeckUpsertDeck request, so reading both logs in order gives the current state."""
+    decks = {}
+    paths = paths or find_logs()
+    for path in sorted(paths, key=lambda p: os.path.getmtime(p)):
+        want = False
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if want:
+                    want = False
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    lists = d.get("DecksInternal") or d.get("Decks") or {}
+                    if not lists:
+                        continue
+                    decks = {}     # a fresh snapshot: decks you deleted in Arena drop out
+                    for summ in d.get("DeckSummaries") or d.get("DeckSummariesV2") or []:
+                        did = summ.get("DeckIdInternal") or summ.get("DeckId")
+                        body = lists.get(did) if isinstance(lists, dict) else None
+                        if not body:
+                            continue
+                        attrs = {a.get("name"): a.get("value") for a in summ.get("Attributes", [])}
+                        decks[did] = CollectionDeck(did, summ.get("Name", ""), attrs.get("Format", ""),
+                                                    _cards(body.get("CommandZone")), _cards(body.get("MainDeck")),
+                                                    _cards(body.get("Sideboard")),
+                                                    (attrs.get("LastUpdated") or "").strip('"')[:19])
+                elif line.startswith("<== StartHook"):
+                    want = True
+                elif "==> DeckUpsertDeck" in line:
+                    d = _json_tail(line)
+                    try:
+                        req = json.loads(d["request"]) if isinstance(d.get("request"), str) else d.get("request") or d
+                        summ, body = req.get("Summary", {}), req.get("Deck") or {}
+                        attrs = {a.get("name"): a.get("value") for a in summ.get("Attributes", [])}
+                        did = summ.get("DeckId", "")
+                        old = decks.get(did)
+                        decks[did] = CollectionDeck(did, summ.get("Name", ""),
+                                                    attrs.get("Format") or (old.arena_format if old else ""),
+                                                    _cards(body.get("CommandZone")), _cards(body.get("MainDeck")),
+                                                    _cards(body.get("Sideboard")),
+                                                    (attrs.get("LastUpdated") or "").strip('"')[:19])
+                    except (TypeError, KeyError, ValueError, AttributeError):
+                        pass
+    return decks

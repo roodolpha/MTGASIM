@@ -27,16 +27,28 @@ class Deck:
     commanders: list = field(default_factory=list)
     main: Counter = field(default_factory=Counter)
     side: Counter = field(default_factory=Counter)
+    format: str = ""       # Brewbench format key, when known (decks imported from Arena)
+    arena_id: str = ""     # Arena's DeckId, so a re-import updates the same file
 
     @property
     def size(self) -> int:
+        """Main deck only (commander excluded), which is what format rules count."""
         return sum(self.main.values())
+
+    @property
+    def total(self) -> int:
+        """Every card including the commander: what Arena shows (99 + commander = 100)."""
+        return self.size + len(self.commanders)
 
     def all_names(self):
         return set(self.commanders) | set(self.main) | set(self.side)
 
     def to_dck(self) -> str:
         out = ["[metadata]", f"Name={self.name}"]
+        if self.format:
+            out.append(f"Format={self.format}")
+        if self.arena_id:
+            out.append(f"ArenaId={self.arena_id}")
         if self.commanders:
             out.append("[Commander]")
             out += [f"1 {c}" for c in self.commanders]
@@ -109,8 +121,14 @@ def read_dck(path) -> Deck:
             section = line.strip("[]").lower()
             continue
         if section == "metadata":
-            if line.lower().startswith("name="):
-                deck.name = line.split("=", 1)[1]
+            k, _, v = line.partition("=")
+            k = k.strip().lower()
+            if k == "name":
+                deck.name = v
+            elif k == "format":
+                deck.format = v.strip()
+            elif k == "arenaid":
+                deck.arena_id = v.strip()
             continue
         m = re.match(r"^(\d+)\s+(.+?)(?:\|.*)?$", line)
         if not m:
