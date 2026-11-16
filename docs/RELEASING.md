@@ -14,11 +14,13 @@ Two free routes, and it's worth doing both:
   builds and the Store signs it for free, hosts it and updates it. One-off setup: create an individual account in
   Partner Center, reserve the app name, copy the package name, publisher and publisher display name from
   *Product identity* into the repo's Actions variables `STORE_PACKAGE_NAME`, `STORE_PUBLISHER` and
-  `STORE_PUBLISHER_DISPLAY_NAME`, and add the logo PNGs under `packaging/msix/Assets/`.
+  `STORE_PUBLISHER_DISPLAY_NAME`. The logo PNGs are already in `packaging/msix/Assets/`.
 * **SignPath Foundation** for the installer on GitHub releases: free for open-source projects with an OSI licence
   (GPL-3.0 qualifies) and a **public** repository. The certificate is issued to "SignPath Foundation", and the
-  project has to publish a short code-signing policy page. Apply at signpath.org, then add their GitHub Action to
-  `release.yml` before the upload step.
+  project has to publish a short code-signing policy page: that's [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md). They
+  also need at least one prior release, multi-factor sign-in on GitHub and SignPath for everyone with rights, and a
+  fully automated build (this repo has all of those once 2FA is on). Apply at signpath.org, then add their GitHub
+  Action to `release.yml` before the upload step.
 
 Paid fallback: an OV certificate from a CA (roughly £60-£300 a year). Azure Artifact Signing (about $10 a
 month) is currently only open to individuals in the US and Canada.
