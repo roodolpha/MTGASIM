@@ -142,11 +142,11 @@ const art = name => name ? 'https://api.scryfall.com/cards/named?format=image&ve
 const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {}).then(r => r.json());
 let STATUS = {formats: []}, DECKS = [];
 
-const VIEWS = () => ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup, swap: swapPage});
+const VIEWS = () => ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup, swap: swapPage, ideas: ideasPage});
 function show(view, arg) {
   const h = arg ? '#' + view + '/' + encodeURIComponent(arg) : '#' + view;
   if (location.hash !== h) history.replaceState(null, '', h);
-  const tab = view === 'run' ? 'runs' : view;
+  const tab = view === 'run' ? 'runs' : view === 'ideas' ? 'decks' : view;
   document.querySelectorAll('nav a[data-view]').forEach(a => a.dataset.view === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   window.scrollTo(0, 0);
   VIEWS()[view](arg);
@@ -209,6 +209,31 @@ async function runPage(id) {
 
 let DFMT = '', OPPFMT = '';
 // ---- "Did this swap help?": your deck vs an edited copy, on the same shuffles and opponents
+let IDEAS_TYPE = '', IDEAS = {};
+async function ideasPage(id) {
+  const d = (DECKS || []).find(x => x.id === id) || {};
+  if (IDEAS.id !== id) $('#main').innerHTML = `<div class="plain"><a href="#decks" class="dim">← Decks</a><h1 class="page" style="margin-top:8px">Card ideas for ${esc(d.name || 'this deck')}</h1>
+    <p class="dim">Looking up what other ${esc((d.commanders || [])[0] || '')} decks play…</p></div>`;
+  const r = IDEAS.id === id ? IDEAS.r : await api('/api/decks/ideas?id=' + encodeURIComponent(id));
+  if (!r.error) IDEAS = {id, r};
+  if (r.error) { $('#main').innerHTML = `<div class="plain"><a href="#decks" class="dim">← Decks</a><h1 class="page" style="margin-top:8px">Card ideas</h1><p class="err">${esc(r.error)}</p></div>`; return; }
+  const ORDER = ['Creature', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Planeswalker', 'Battle', 'Land', 'Other'];
+  const types = [...new Set(r.cards.map(c => c.category))].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+  if (IDEAS_TYPE && !types.includes(IDEAS_TYPE)) IDEAS_TYPE = '';
+  const rows = r.cards.filter(c => !IDEAS_TYPE || c.category === IDEAS_TYPE);
+  const fmtName = (STATUS.formats || []).find(f => f.key === r.format)?.name || r.format;
+  const syn = v => v == null ? '–' : (v >= 0 ? '+' : '') + Math.round(v * 100);
+  $('#main').innerHTML = hero(art(r.commander), `<a href="#decks" class="dim" style="font-size:14px">← Decks</a>
+    <h1 style="margin:6px 0 4px">Card ideas for ${esc(r.deck)}</h1>
+    <p class="dim" style="margin:0;max-width:70ch">Cards that EDHREC's ${r.decks.toLocaleString()} decks with ${esc(r.commander)} often play and this deck doesn't. EDHREC counts paper Commander decks, so ${r.checked ? `this list only keeps cards legal in ${esc(fmtName)} on Arena${r.left_out ? ` (${r.left_out} others left out)` : ''}` : `<b>legality on Arena couldn't be checked just now</b>, so some of these may not be on Arena`}.</p>`) + `
+  <div class="tabs" role="tablist" aria-label="Card type"><button role="tab" aria-selected="${!IDEAS_TYPE}" data-it="">All ${r.cards.length}</button>${types.map(t => `<button role="tab" aria-selected="${t === IDEAS_TYPE}" data-it="${esc(t)}">${esc(t)} ${r.cards.filter(c => c.category === t).length}</button>`).join('')}</div>
+  <div class="panel"><table><thead><tr><th>Card</th><th>Type</th><th class="n" title="Share of EDHREC's decks for this commander that could play the card and do">In decks</th><th class="n" title="How much more often the card appears with this commander than in other decks of the same colours">Synergy</th></tr></thead><tbody>
+  ${rows.map(c => `<tr><td><a href="https://scryfall.com/search?q=${encodeURIComponent('!"' + c.name + '"')}" target="_blank" rel="noopener">${esc(c.name)}</a>${c.tags.includes('new') ? ' <span class="dim" style="font-size:12px">new</span>' : ''}</td>
+    <td class="dim">${esc(c.category)}</td><td class="n">${c.share == null ? '–' : Math.round(c.share * 100) + '%'} <span class="dim" style="font-size:12px">${c.decks.toLocaleString()}</span></td><td class="n">${syn(c.synergy)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nothing here.</td></tr>'}
+  </tbody></table></div>
+  <p class="dim" style="font-size:13px;margin-top:12px">Numbers from <a href="${esc(r.url)}" target="_blank" rel="noopener">EDHREC</a>, refreshed once a day. They show what other players run, not what will win: to see if a card helps your list, try it with Test a change.</p>`;
+  document.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { IDEAS_TYPE = b.dataset.it; ideasPage(id); });
+}
 async function swapPage(pick) {
   DECKS = await api('/api/decks');
   const sw = await api('/api/swap');
@@ -310,7 +335,7 @@ async function decks() {
       <div><small>Ladder</small><b>${d.ladder ? pct(d.ladder.win_rate) : '–'}</b><small>${d.ladder ? d.ladder.games.toLocaleString() + ' games' : 'no games yet'}</small></div>
       <div><small>Sim</small><b class="sim">${d.sim ? pct(d.sim.win_rate) : '–'}</b><small>${d.sim ? d.sim.games.toLocaleString() + ' games' : 'not simmed yet'}</small></div>
       ${d.ladder && d.sim && d.ladder.games >= 30 && d.sim.games >= 100 ? `<div><small>Gap</small><b>${((d.sim.win_rate - d.ladder.win_rate) * 100 >= 0 ? '+' : '') + ((d.sim.win_rate - d.ladder.win_rate) * 100).toFixed(1)}</b><small>points</small></div>` : ''}</div>` : ''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="#new" data-sim="${esc(d.id)}">Sim it</a><a class="btn ghost" href="#swap/${esc(d.id)}">Test a change</a><button class="btn ghost" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="#new" data-sim="${esc(d.id)}">Sim it</a><a class="btn ghost" href="#swap/${esc(d.id)}">Test a change</a>${(d.commanders || []).length ? `<a class="btn ghost" href="#ideas/${esc(d.id)}">Card ideas</a>` : ''}<button class="btn ghost" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
   <div class="grid2"><div class="panel"><details><summary style="cursor:pointer;font-weight:700">Paste a deck instead</summary>
   <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
   <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>

@@ -451,6 +451,22 @@ def make_handler(cfg, jobs):
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
             if path == "/api/swap":
                 return self._send(200, {k: v for k, v in SWAP.items()})
+            if path == "/api/decks/ideas":     # EDHREC card ideas for a Brawl deck: facts, no advice
+                from . import ideas
+                stem = parse_qs(u.query).get("id", [""])[0]
+                src = cfg.decks_dir / f"{stem}.dck"
+                if not re.fullmatch(r"[A-Za-z0-9_.-]+", stem) or not src.exists():
+                    return self._send(404, {"error": "No such deck."})
+                deck = D.read_dck(src)
+                fk = deck.format if deck.format in formats.FORMATS else "brawl"
+                try:
+                    out = ideas.for_deck(cfg, deck, formats.get(fk))
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+                except Exception:
+                    return self._send(502, {"error": "Couldn't reach EDHREC. Check your connection and try again."})
+                out.update(deck=deck.name, format=fk)
+                return self._send(200, out)
             if path == "/api/optimiser/status":
                 return self._send(200, dict(OPT))
             if path == "/api/gauntlet":

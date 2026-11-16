@@ -218,3 +218,28 @@ def test_card_database_found_from_arena_log(tmp_path):
     log.write_text("Mono path[0] = '" + str(data / "Managed").replace("\\", "/") + "'\nInitialize engine version: 6000\n")
     assert cards.install_dirs_from_log([log]) == [str(data)]
     assert cards._arena_db_candidates([log]) == [str(db)]
+
+
+def test_card_ideas_from_edhrec(tmp_path, monkeypatch):
+    """Ideas leave out cards already in the deck, basics and cards not legal on Arena, sorted by how many decks play them."""
+    from brewbench import config, decks as D, ideas, formats, cards as C
+    cfg = config.Config(tmp_path)
+    page = {"container": {"json_dict": {"cardlists": [
+        {"tag": "topcards", "header": "Top Cards", "cardviews": [
+            {"name": "Simic Ascendancy", "num_decks": 50, "potential_decks": 100, "synergy": 0.4}]},
+        {"tag": "creatures", "header": "Creatures", "cardviews": [
+            {"name": "Llanowar Elves", "num_decks": 80, "potential_decks": 100, "synergy": 0.0},
+            {"name": "Birds of Paradise", "num_decks": 90, "potential_decks": 100, "synergy": 0.1}]},
+        {"tag": "lands", "header": "Lands", "cardviews": [
+            {"name": "Forest", "num_decks": 99, "potential_decks": 100, "synergy": 0.0},
+            {"name": "Sol Ring", "num_decks": 95, "potential_decks": 100, "synergy": 0.0}]}]}}}
+    monkeypatch.setattr(ideas, "_page", lambda cfg, c: page)
+    monkeypatch.setattr(C, "legality", lambda names, k, f=None: {n: ("not_legal" if n == "Sol Ring" else "legal") for n in names})
+    monkeypatch.setattr(C, "identity", lambda names, f=None: {"Simic Ascendancy": {"type": "Enchantment"}, "Birds of Paradise": {"type": "Creature — Bird"}})
+    deck = D.Deck(name="Z", format="brawl")
+    deck.commanders.append("Zimone, Paradox Sculptor")
+    deck.main["Llanowar Elves"] += 1
+    r = ideas.for_deck(cfg, deck, formats.get("brawl"))
+    assert [c["name"] for c in r["cards"]] == ["Birds of Paradise", "Simic Ascendancy"]
+    assert r["cards"][1]["category"] == "Enchantment" and r["cards"][1]["tags"] == ["top"]
+    assert r["left_out"] == 1 and r["decks"] == 100

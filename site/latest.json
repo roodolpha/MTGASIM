@@ -1,6 +1,6 @@
 {
- "version": "0.7.1",
+ "version": "0.7.2",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Finds your Arena decks wherever Arena is installed, so the first import takes seconds instead of minutes. Uninstalling now offers to remove the Java and Forge Brewbench downloaded."
+ "notes": "Card ideas: for each Brawl deck, the cards other decks with your commander play that yours doesn't, from EDHREC, filtered to what's legal on Arena."
 }
