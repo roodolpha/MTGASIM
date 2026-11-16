@@ -78,12 +78,13 @@ nav.main a[aria-current="page"]{color:var(--text);border-bottom-color:var(--gold
 
 /* sections */
 section.block{padding:40px 0;border-top:1px solid var(--line)}
+section.block > header > *{min-width:0;max-width:100%}
 section.block > header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline;justify-content:space-between;margin-bottom:20px}
 section.block > header p{color:var(--muted);max-width:60ch}
 .pagehead{padding:40px 0 24px}
 .pagehead p{color:var(--muted);margin-top:10px;max-width:62ch}
-.fmt{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-weight:600}
-select{appearance:none;background:var(--ink2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23A9B1C4' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line);border-radius:3px;color:var(--text);font:600 16px var(--body);min-height:44px;padding:0 38px 0 12px}
+.fmt{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px;color:var(--muted);font-weight:600;max-width:100%;min-width:0}
+select{appearance:none;background:var(--ink2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23A9B1C4' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line);border-radius:3px;color:var(--text);font:600 16px var(--body);min-height:44px;padding:0 38px 0 12px;max-width:100%;text-overflow:ellipsis}
 
 /* card grid: decks shown as their cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:28px 20px}
@@ -125,7 +126,7 @@ td.rank{color:var(--muted);width:1%}
 .preview{position:fixed;z-index:20;width:244px;pointer-events:none;border-radius:var(--card);box-shadow:0 20px 50px rgba(0,0,0,.6)}
 
 /* matchup list */
-.vs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.vs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
 .vs .row{display:flex;align-items:center;gap:12px;background:var(--ink2);border:1px solid var(--line);border-left:4px solid var(--line);padding:10px 12px;border-radius:3px}
 .vs .row.w{border-left-color:var(--win)} .vs .row.l{border-left-color:var(--loss)}
 .vs .row .art{width:52px;height:38px;border-radius:2px;background:var(--ink3) center/cover;flex:0 0 auto}

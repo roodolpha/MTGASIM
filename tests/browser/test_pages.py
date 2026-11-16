@@ -78,6 +78,10 @@ def visit(browser, url, expect, width=1440):
     page.wait_for_timeout(1500)
     text = page.inner_text("body")
     wide = page.evaluate("document.documentElement.scrollWidth")
+    if wide > width + 2:   # name what sticks out, so a failure says where to look
+        print(url, page.evaluate("""(w) => [...document.querySelectorAll('body *')].filter(e => {
+            const r = e.getBoundingClientRect(); return r.right > w + 2 && !e.closest('.tablewrap,.scroll'); })
+            .slice(0, 8).map(e => e.tagName + '.' + e.className + ' ' + Math.round(e.getBoundingClientRect().right))""", width))
     page.close()
     assert not errors, f"{url}: {errors}"
     for e in expect:
@@ -107,4 +111,4 @@ def test_site_pages(browser, site_url, path, expect):
 
 @pytest.mark.parametrize("path", ["#/", "#/meta", "#/leaderboard"])
 def test_site_fits_a_phone(browser, site_url, path):
-    assert visit(browser, site_url + path, [], width=390) <= 392
+    assert visit(browser, site_url + path, [], width=390) <= 392, "page wider than the phone (see printed elements)"
