@@ -3,45 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brewbench: what's actually winning on MTG Arena</title>
-<meta name="description" content="What's actually winning on MTG Arena: real ladder results from players who share, next to thousands of simulated games. Test your deck before you craft. Free and open source.">
+<title>Brewbench: play your Arena deck before you craft</title>
+<meta name="description" content="Brewbench plays your MTG Arena deck thousands of times against the commanders and decks you actually meet on ladder, on your own PC. Free and open source.">
+<link rel="canonical" href="https://mtgasim.roododger.workers.dev/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brewbench">
-<meta property="og:title" content="Brewbench: what's actually winning on MTG Arena">
-<meta property="og:description" content="Real ladder results next to thousands of simulated games. Test your deck before you craft. Free and open source.">
+<meta property="og:url" content="https://mtgasim.roododger.workers.dev/">
+<meta property="og:title" content="Brewbench: play your Arena deck before you craft">
+<meta property="og:description" content="Thousands of simulated games against the decks you actually meet on ladder, on your own PC. Free and open source.">
 <meta property="og:image" content="https://mtgasim.roododger.workers.dev/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0B0C0E">
+<meta name="theme-color" content="#141A2A">
 <link rel="icon" type="image/png" href="favicon.png">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/source-sans-3-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <script src="config.js"></script>
 </head>
 <body>
-<div class="bar"><div class="wrap">
+<a class="skip" href="#app">Skip to content</a>
 <header class="top">
-<a class="logo" href="#/">brew<span>bench</span></a>
-<nav class="main" aria-label="Main">
-<a href="#/meta">Meta</a>
-<a href="#/leaderboard">Leaderboards</a>
-<a href="#/players">Players</a>
-<a href="#/api">API</a>
-<a href="https://discord.gg/kTnCXydsgC" rel="noopener">Discord</a>
-</nav>
-<a class="btn primary" data-download href="/download/windows">Download</a>
+  <div class="wrap top-in">
+    <a class="logo" href="#/" aria-label="Brewbench home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 3h10v2h-2v8.2l7.6 12.1A3 3 0 0 1 24 30H8a3 3 0 0 1-2.6-4.7L13 13.2V5h-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9.2 22h13.6l2 3.2a1 1 0 0 1-.8 1.6H8a1 1 0 0 1-.8-1.6z" fill="currentColor"/></svg>Brewbench</a>
+    <nav class="main" aria-label="Main">
+      <a href="#/meta">Commanders and decks</a>
+      <a href="#/players">Players</a>
+      <a href="#/how">How it works</a>
+      <a href="https://discord.gg/kTnCXydsgC" rel="noopener">Discord</a>
+    </nav>
+    <a class="btn gold dl-top" data-download href="/download/windows">Download</a>
+  </div>
 </header>
-</div></div>
-<div class="wrap">
-<main id="app" aria-live="polite"></main>
-<footer>
-<p>Brewbench is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card art via <a href="https://scryfall.com">Scryfall</a>.</p>
-<p>Sims run on <a href="https://github.com/Card-Forge/forge">Forge</a> (GPL-3.0). Everything here is self-reported by players who opted in. <a href="#/privacy">Privacy</a> · <a href="https://discord.gg/kTnCXydsgC" rel="noopener">Discord</a> · <a href="https://github.com/roodolpha/MTGASIM">GitHub</a></p>
+<main id="app" class="wrap" tabindex="-1"><p class="loading">Loading</p></main>
+<footer class="wrap foot">
+  <ul>
+    <li><a href="#/how">How it works</a></li>
+    <li><a href="#/privacy">Privacy</a></li>
+    <li><a href="#/api">API</a></li>
+    <li><a href="https://discord.gg/kTnCXydsgC" rel="noopener">Discord</a></li>
+    <li><a href="https://github.com/roodolpha/MTGASIM" rel="noopener">Source code</a></li>
+  </ul>
+  <p>Brewbench is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. &copy;Wizards of the Coast LLC.</p>
+  <p>Card images from <a href="https://scryfall.com">Scryfall</a>. Simulations run on <a href="https://github.com/Card-Forge/forge">Forge</a>. Mana symbols from the <a href="https://mana.andrewgioia.com">Mana font</a>. Results are self-reported by players who chose to share.</p>
 </footer>
-</div>
 <script src="app.js"></script>
 </body>
 </html>

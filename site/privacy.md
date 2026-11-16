@@ -4,9 +4,15 @@
 
 **Who's responsible:** roodolpha, the developer who runs Brewbench. Contact: ask in the [Brewbench Discord](https://discord.gg/kTnCXydsgC), open an issue at [github.com/roodolpha/MTGASIM/issues](https://github.com/roodolpha/MTGASIM/issues), or for anything you'd rather not post publicly, ask there for a private contact and you'll be given one.
 
+## This website
+
+The site doesn't use cookies, analytics or ads. Its fonts are served from this site. Card images come from Scryfall
+(scryfall.com), so your browser asks Scryfall for them and Scryfall sees your IP address, as any website you load
+something from does. The site remembers the format you last picked in your browser's storage, and nothing else.
+
 ## The app on your PC
 
-The brewbench app keeps everything on your computer: your decks, simulations, and the record of your Arena games
+The Brewbench app keeps everything on your computer: your decks, simulations, and the record of your Arena games
 it reads from Arena's own log file. Nothing leaves your PC unless you choose to share.
 
 It reads Arena's `Player.log` and nothing else from Arena. It doesn't read Arena's memory, change the game, or

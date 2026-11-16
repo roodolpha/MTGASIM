@@ -95,9 +95,9 @@ def test_app_pages(browser, app_url, path, expect):
     visit(browser, app_url + path, expect)
 
 
-SITE_PAGES = [("#/", ["What's winning", "Top decks", "Download for Windows"]), ("#/meta", ["Meta", "Matchups"]),
-              ("#/leaderboard", ["Leaderboards"]), ("#/player/someone", ["Win rate by week"]),
-              ("#/players", ["Players"]), ("#/api", ["API"]), ("admin.html", ["Admin", "Password"])]
+SITE_PAGES = [("#/", ["Play your deck", "Commanders on the ladder", "Download for Windows"]), ("#/meta", ["Commanders", "Matchups"]),
+              ("#/leaderboard", ["Players"]), ("#/player/someone", ["Win rate by week"]),
+              ("#/players", ["Players"]), ("#/how", ["How it works", "Detailed Logs"]), ("#/api", ["API"]), ("admin.html", ["Admin", "Password"])]
 
 
 @pytest.mark.parametrize("path,expect", SITE_PAGES)
