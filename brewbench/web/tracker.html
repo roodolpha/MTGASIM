@@ -2844,6 +2844,17 @@ setInterval(()=>{ const playing = [...document.querySelectorAll('video')].some(v
     try{ sessionStorage.setItem('scrollY', String(window.scrollY)); }catch(e){} location.reload(); } }, 30000);
 try{ const y = +sessionStorage.getItem('scrollY'); sessionStorage.removeItem('scrollY'); if(y) setTimeout(()=>window.scrollTo(0, y), 50); }catch(e){}
 
+// a newer Brewbench? say so up top (Update now is on the Sims/Settings pages)
+fetch('/api/update').then(r => r.json()).then(u => {
+  if (!u.newer) return;
+  let hid; try { hid = localStorage.getItem('upd-hide') === u.latest; } catch (e) {}
+  if (hid) return;
+  const d = document.createElement('div');
+  d.style.cssText = 'max-width:1280px;margin:0 auto 18px;width:calc(100% - 48px);display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#18181B;border:1px solid #FF6B3D;border-radius:14px;padding:12px 18px';
+  d.innerHTML = '<b>Brewbench ' + esc(u.latest) + ' is out</b><span style="color:var(--muted)">You have ' + esc(u.current) + '.</span><a href="/#settings" style="margin-left:auto;background:#FF6B3D;color:#1A0D07;font-weight:700;border-radius:999px;padding:8px 16px;text-decoration:none">Update</a>';
+  document.querySelector('header.side').after(d);
+}).catch(() => {});
+
 // sims running? show a Stop button up top (works for runs started anywhere)
 (function simWatch(){
   const tick = async () => {

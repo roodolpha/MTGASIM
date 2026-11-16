@@ -223,8 +223,8 @@ def make_handler(cfg, jobs):
                 from . import setup_wizard
                 return self._send(200, setup_wizard.status(cfg))
             if path == "/api/update":
-                from . import setup_wizard
-                return self._send(200, setup_wizard.check_update())
+                from . import updates
+                return self._send(200, updates.check(force="force" in parse_qs(u.query)))
             if path == "/api/diagnostics":
                 return self._send(200, diagnostics_zip(cfg), "application/zip")
             if path == "/api/settings":
@@ -291,6 +291,14 @@ def make_handler(cfg, jobs):
                         except (TypeError, ValueError):
                             return self._send(400, {"error": f"bad {k}"})
                 return self._send(200, {"ok": True})
+            if path == "/api/update/install":
+                from . import updates
+                if not updates.installed():
+                    return self._send(400, {"error": "Only the installed app can update itself. "
+                                                     "Running from source? Use git pull."})
+                if not updates.install(on_ready_to_quit=ON_QUIT):
+                    return self._send(400, {"error": "No newer version to install."})
+                return self._send(200, updates.check())
             if path == "/api/app/show":   # a second copy of the app was started: show this one's window
                 if ON_SHOW is None:
                     return self._send(200, {"ok": False})
@@ -351,6 +359,7 @@ class _Server(ThreadingHTTPServer):
 
 
 ON_SHOW = None   # set by the desktop app: brings its window forward
+ON_QUIT = None   # set by the desktop app: closes it (so an update can install over it)
 JOBS = None
 
 

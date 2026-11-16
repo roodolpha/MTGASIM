@@ -21,8 +21,10 @@ nav a{color:var(--text);text-decoration:none;font-weight:600;padding:10px 12px;b
 nav a:hover{background:var(--panel)}
 nav a[aria-current="page"]{color:var(--hot)}
 #job{margin-left:auto;font-size:13px;color:var(--dim)}
+[hidden]{display:none!important}
 .btn.stop{min-height:32px;padding:0 14px;font-size:13px;background:var(--loss);color:#1A0D07;margin-left:8px}
 #job{display:flex;align-items:center;gap:4px}
+.updbar{max-width:1280px;margin:0 auto 18px;display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--hot);border-radius:14px;padding:12px 18px;width:calc(100% - 48px)}
 .cta{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;background:var(--hot);color:#1A0D07;font-weight:700;text-decoration:none;white-space:nowrap}
 .cta:hover,.btn:hover{background:#FF8259}
 a:focus-visible,button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
@@ -290,12 +292,13 @@ async function settings() {
    <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
   <div class="panel"><h2 style="margin-bottom:10px">About</h2>
    <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
-   <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out.</b> <a href="${esc(up.url)}">Get it</a>` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'}</p>
+   <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out</b> (see the banner up top).` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'} <button class="btn ghost" id="supd" style="min-height:32px;padding:0 12px;font-size:13px;margin-left:6px">Check now</button></p>
    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
    <button class="btn ghost" id="ssetup">Setup checklist</button></div>
    <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
   $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
   $('#ssetup').onclick = () => show('setup');
+  $('#supd').onclick = async () => { try { localStorage.removeItem('upd-hide'); } catch (e) {} await updateBanner(true); settings(); };
   shareBox();
 }
 
@@ -371,7 +374,34 @@ async function poll() {
 }
 poll();
 Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; if (!route()) { if (st.ready) location.replace('/tracker'); else show('setup'); } });
-api('/api/update').then(u => { if (u.newer) { const b = document.createElement('a'); b.href = u.url; b.textContent = 'Update ' + u.latest + ' available'; b.style.cssText = 'color:var(--hot);font-weight:700'; $('#job').after(b); } });
+// ---- updates: a banner when a newer Brewbench is out
+async function updateBanner(force) {
+  let u; try { u = await api('/api/update' + (force ? '?force=1' : '')); } catch (e) { return; }
+  let el = $('#upd');
+  if (!u.newer) { if (el) el.remove(); return; }
+  let hidden; try { hidden = localStorage.getItem('upd-hide') === u.latest; } catch (e) {}
+  if (hidden && !force) return;
+  if (!el) { el = document.createElement('div'); el.id = 'upd'; document.querySelector('header').after(el); }
+  const ins = u.install || {}, busy = ins.state === 'downloading' || ins.state === 'starting';
+  el.className = 'updbar';
+  el.innerHTML = `<b>Brewbench ${esc(u.latest)} is out</b><span class="dim">You have ${esc(u.current)}.${u.notes ? ' ' + esc(u.notes) : ''}</span>
+    <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    ${ins.state === 'error' ? `<span class="err">Update failed: ${esc(ins.error)}</span>` : ''}
+    ${busy ? `<span>${ins.state === 'starting' ? 'Installing… Brewbench will reopen by itself.' : 'Downloading… ' + (ins.total ? Math.round(100 * ins.done / ins.total) + '%' : '')}</span>`
+      : u.can_install ? '<button class="btn" id="updgo" style="min-height:36px">Update now</button>' : `<a class="btn" style="min-height:36px;display:inline-flex;align-items:center;text-decoration:none" href="${esc(u.page || u.url)}" target="_blank" rel="noopener">Get it</a>`}
+    ${busy ? '' : '<button class="btn ghost" id="updlater" style="min-height:36px">Later</button>'}</span>`;
+  const go = $('#updgo');
+  if (go) go.onclick = async () => {
+    const r = await api('/api/update/install', {});
+    if (r.error) { alert(r.error); return; }
+    updateBanner();
+  };
+  const later = $('#updlater');
+  if (later) later.onclick = () => { try { localStorage.setItem('upd-hide', u.latest); } catch (e) {} el.remove(); };
+  if (busy) setTimeout(updateBanner, 1000);
+}
+updateBanner();
+setInterval(updateBanner, 6 * 3600 * 1000);
 </script>
 </body>
 </html>

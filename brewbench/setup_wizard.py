@@ -183,6 +183,12 @@ def _vtuple(v):
 
 
 def check_update():
+    """The app's update check now reads the website's latest.json (see updates.py), which works whether or not
+    the GitHub repo is public. The GitHub API is only a fallback."""
+    from . import updates
+    info = updates.check()
+    if info["latest"]:
+        return info
     try:
         rel = _get_json(f"https://api.github.com/repos/{APP_REPO}/releases/latest", timeout=10)
     except Exception:

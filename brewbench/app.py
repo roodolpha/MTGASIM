@@ -147,6 +147,29 @@ class App:
             pass
         os._exit(0)   # the server and tracker threads are daemons; make sure nothing lingers
 
+    def check_updates(self, force=False, always_say=False):
+        from . import updates
+        info = updates.check(force=force)
+        if self.tray is None:
+            return info
+        try:
+            if info["newer"] and (always_say or self.cfg.get("update_told") != info["latest"]):
+                self.cfg.set("update_told", info["latest"])
+                self.cfg.save()
+                self.tray.notify(f"Brewbench {info['latest']} is out. Open Brewbench and click Update now.", "Update available")
+            elif always_say and not info["newer"]:
+                self.tray.notify(f"You're on the latest version ({info['current']})." if info["latest"]
+                                 else "Couldn't check for updates right now.", "Brewbench")
+        except Exception:
+            pass
+        return info
+
+    def _update_loop(self):
+        time.sleep(20)   # let the window and tracker settle first
+        while not self.quitting:
+            self.check_updates()
+            time.sleep(6 * 3600)
+
     def stop_sims(self):
         from . import runner
         try:
@@ -170,6 +193,7 @@ class App:
         menu = pystray.Menu(
             pystray.MenuItem("Open Brewbench", lambda: self.show(), default=True),
             pystray.MenuItem("Stop all sims", lambda: self.stop_sims()),
+            pystray.MenuItem("Check for updates", lambda: self.check_updates(force=True, always_say=True)),
             pystray.MenuItem("Start with Windows", lambda: set_startup(not startup_enabled()),
                              checked=lambda item: startup_enabled(), visible=sys.platform == "win32"),
             pystray.Menu.SEPARATOR,
@@ -180,7 +204,9 @@ class App:
 
     def run(self):
         server.ON_SHOW = self.show
+        server.ON_QUIT = self.quit
         self.start_tray()
+        threading.Thread(target=self._update_loop, name="update-check", daemon=True).start()
         try:
             import webview
         except Exception as e:   # no pywebview / no WebView2: the browser still works

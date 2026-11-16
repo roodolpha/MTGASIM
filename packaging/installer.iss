@@ -47,6 +47,17 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 
 [Run]
 Filename: "{app}\brewbench.exe"; Description: "Open Brewbench now"; Flags: nowait postinstall skipifsilent
+; an update started from inside the app (/VERYSILENT /UPDATE): reopen it when done
+Filename: "{app}\brewbench.exe"; Flags: nowait runasoriginaluser; Check: IsAppUpdate
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM brewbench.exe /F"; Flags: runhidden; RunOnceId: "StopApp"
+
+[Code]
+function IsAppUpdate(): Boolean;
+var i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/UPDATE') = 0 then Result := True;
+end;

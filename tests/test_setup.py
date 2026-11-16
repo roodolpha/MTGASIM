@@ -24,7 +24,9 @@ def test_install_forge_unpacks_and_configures(tmp_path, monkeypatch):
     assert not (cfg.home / "forge.download").exists()
 
 
-def test_update_check_compares_versions(monkeypatch):
+def test_update_check_falls_back_to_github(monkeypatch):
+    from brewbench import updates
+    monkeypatch.setattr(updates, "check", lambda *a, **k: {"latest": None})   # site unreachable
     monkeypatch.setattr(S, "_get_json", lambda url, timeout=30: {"tag_name": "v99.0.0", "html_url": "u", "body": ""})
     assert S.check_update()["newer"] is True
     monkeypatch.setattr(S, "_get_json", lambda url, timeout=30: {"tag_name": "v0.0.1", "html_url": "u", "body": ""})

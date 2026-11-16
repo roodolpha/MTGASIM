@@ -61,3 +61,22 @@ def test_sim_process_matching():
     assert runner._is_driver("brewbench-cli.exe optimise Zimone -f brawl")
     assert not runner._is_driver("py -3 -m brewbench serve")
     assert not runner._is_driver('"C:\\Programs\\brewbench\\brewbench.exe" --background')
+
+
+def test_site_latest_json_matches_this_version():
+    """Bump site/latest.json with every release, or installed apps won't hear about it."""
+    import json, pathlib
+    from brewbench import __version__
+    info = json.loads((pathlib.Path(__file__).parent.parent / "site" / "latest.json").read_text())
+    assert info["version"] == __version__ and info["url"].endswith(".exe")
+
+
+def test_update_check_compares_versions(tmp_path):
+    from brewbench import updates
+    f = tmp_path / "latest.json"
+    f.write_text('{"version": "99.0.0", "url": "https://x/setup.exe"}')
+    info = updates.check(force=True, url=f.as_uri())
+    assert info["newer"] and info["latest"] == "99.0.0" and not info["can_install"]
+    f.write_text('{"version": "0.0.1", "url": "https://x/setup.exe"}')
+    assert not updates.check(force=True, url=f.as_uri())["newer"]
+    assert updates.vtuple("v0.10.0") > updates.vtuple("0.9.9")
