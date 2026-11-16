@@ -7,48 +7,48 @@
 <meta name="referrer" content="no-referrer">
 <title>Brewbench admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <style>
-:root{--bg:#0F0F10;--panel:#18181B;--line:#2A2A2F;--text:#F2EEE6;--dim:#A7A29A;--hot:#FF6B3D;--sim:#7CC4FF;--bad:#FF6B6B;--ok:#5FD38D}
+:root{--bg:#0B0C0E;--panel:#111317;--line:#22262D;--line2:#2C313A;--text:#E6E8EB;--dim:#8A919B;--hot:#FF6B3D;--sim:#6CB6FF;--bad:#F0605A;--ok:#3FB950}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-h1,h2,b.n{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;letter-spacing:-.02em}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif;font-feature-settings:"tnum" 1}
+h1,h2,b.n{margin:0;letter-spacing:-.01em;font-weight:600}
 a{color:var(--hot)}
 .wrap{max-width:1280px;margin:0 auto;padding:0 24px 64px}
 main{display:flex;flex-direction:column;gap:24px}
 header{display:flex;align-items:center;gap:16px;padding:16px 0;flex-wrap:wrap}
-.logo{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em}
+.logo{font-weight:700;font-size:17px;letter-spacing:-.02em}
 .logo span{color:var(--hot)} .logo small{font:600 14px system-ui,sans-serif;color:var(--dim);margin-left:8px;letter-spacing:0}
 .right{margin-left:auto;display:flex;gap:10px;align-items:center}
-.btn{min-height:40px;padding:0 18px;border:0;border-radius:999px;background:var(--hot);color:#1A0D07;font:700 14px system-ui,sans-serif;cursor:pointer}
-.btn.ghost{background:none;border:1px solid rgba(242,238,230,.35);color:var(--text)}
-.btn.small{min-height:32px;padding:0 12px;font-size:13px}
+.btn{height:34px;padding:0 14px;border:1px solid var(--hot);border-radius:6px;background:var(--hot);color:#170A04;font:600 13px Inter,system-ui,sans-serif;cursor:pointer}
+.btn.ghost{background:#161920;border-color:var(--line2);color:var(--text);font-weight:500}
+.btn.small{height:28px;padding:0 10px;font-size:12px}
 .btn.danger{background:none;border:1px solid var(--bad);color:var(--bad)}
 .btn:focus-visible,input:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
-input{background:#0B0B0C;border:1px solid var(--line);border-radius:10px;color:var(--text);font:15px system-ui,sans-serif;padding:10px 12px;min-height:44px}
-.panel{background:var(--panel);border-radius:16px;padding:20px 22px;min-width:0}
-.panel h2{font-size:22px;font-weight:800;margin-bottom:12px}
+input{background:var(--bg);border:1px solid var(--line2);border-radius:6px;color:var(--text);font:14px Inter,system-ui,sans-serif;padding:0 10px;height:34px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px;min-width:0}
+.panel h2{font-size:15px;margin-bottom:12px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .head h2{margin:0}
 .strip{display:flex;flex-wrap:wrap;gap:10px 40px;align-items:baseline}
-.strip b.n{font-weight:800;font-size:34px;margin-right:6px}
+.strip b.n{font-size:22px;margin-right:6px}
 .strip span{color:var(--dim);font-size:14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:24px;align-items:start}
 .bars{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:8px}
-.bars i{flex:1;background:var(--sim);border-radius:3px 3px 0 0;min-height:2px}
+.bars i{flex:1;background:var(--sim);border-radius:2px 2px 0 0;min-height:2px;opacity:.85}
 .axis{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;margin-top:4px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th{font-size:12px;color:var(--dim);text-align:left;font-weight:600;padding:6px 8px;white-space:nowrap}
+th{font-size:11px;color:var(--dim);text-align:left;font-weight:500;padding:6px 8px;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
 td{padding:9px 8px;border-top:1px solid var(--line);vertical-align:middle}
 td.n,th.n{text-align:right}
 .scroll{overflow-x:auto}
-.dim{color:var(--dim)} .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--line)}
+.dim{color:var(--dim)} .tag{display:inline-block;padding:1px 8px;border-radius:4px;font-size:12px;font-weight:700;border:1px solid var(--line)}
 .tag.pub{color:var(--ok);border-color:var(--ok)} .tag.hid{color:var(--bad);border-color:var(--bad)}
 .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .login{min-height:70vh;display:grid;place-items:center}
-.login form{background:var(--panel);border-radius:18px;padding:32px;display:flex;flex-direction:column;gap:14px;width:min(100%,400px)}
-.login h1{font-size:30px;font-weight:800}
+.login form{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:28px;display:flex;flex-direction:column;gap:14px;width:min(100%,400px)}
+.login h1{font-size:20px}
 .err{color:var(--bad);min-height:1.5em;margin:0}
 code{font-size:12px;color:var(--dim)}
 </style>
