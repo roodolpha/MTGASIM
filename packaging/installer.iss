@@ -40,6 +40,10 @@ Name: "{group}\Brewbench"; Filename: "{app}\brewbench.exe"
 Name: "{group}\Uninstall Brewbench"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\Brewbench"; Filename: "{app}\brewbench.exe"; Tasks: desktopicon
 
+[InstallDelete]
+; versions before 0.5.0 started with Windows through a Startup-folder shortcut; it's the Run key now
+Type: files; Name: "{userstartup}\brewbench.lnk"
+
 [Registry]
 ; "Start with Windows": the same setting as the tick in the app's tray menu
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Brewbench"; ValueData: """{app}\brewbench.exe"" --background"; Tasks: startup
