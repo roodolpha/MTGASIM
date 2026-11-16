@@ -41,3 +41,13 @@ def test_sync_imports_with_commander_counted_and_respects_removal(tmp_path, monk
     assert arena_decks.sync(cfg, force=True)["added"] == []        # second run changes nothing
     assert arena_decks.remove(cfg, "countrs")
     assert arena_decks.sync(cfg, force=True)["added"] == []        # removed decks stay removed
+
+
+def test_share_reads_tracker_history():
+    from brewbench import share
+    m = share._from_tracker({"match_id": "abc", "start": "1793830402324", "event": "Brawl_Ladder", "result": "Loss",
+                             "my_commanders": "[93839]", "opp_commanders": [96873], "opp_seen": [1, 2, 2],
+                             "deck": {"cards": [5, 6, 6]}})
+    assert m.match_id == "abc" and m.start == 1793830402324 and m.my_commanders == [93839]
+    assert m.opp_commanders == {96873} and m.opp_seen[2] == 2 and m.my_deck == [5, 6, 6]
+    assert share._from_tracker({"result": "Win"}) is None

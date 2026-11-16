@@ -103,6 +103,33 @@ class Client:
         return out
 
 
+def _ids(v):
+    if isinstance(v, str):
+        try:
+            v = json.loads(v)
+        except ValueError:
+            return []
+    return [int(x) for x in v or [] if str(x).lstrip("-").isdigit()]
+
+
+def _from_tracker(t):
+    """A game from the tracker's history (tracker/matches.json) as an ArenaMatch, or None if it's incomplete."""
+    if not isinstance(t, dict):
+        return None
+    deck = t.get("deck") if isinstance(t.get("deck"), dict) else {}
+    try:
+        start = int(float(t.get("start") or 0))
+    except (TypeError, ValueError):
+        start = 0
+    m = arena_log.ArenaMatch(match_id=str(t.get("match_id") or ""), event=t.get("event") or "", start=start,
+                             result=t.get("result") or "")
+    m.my_deck = _ids(deck.get("cards"))
+    m.my_commanders = _ids(t.get("my_commanders"))
+    m.opp_commanders = set(_ids(t.get("opp_commanders")))
+    m.opp_seen = Counter(_ids(t.get("opp_seen")))
+    return m if m.match_id else None
+
+
 def build_payload(cfg, include_lists=False, log_paths=None):
     """Everything shareable, from the Arena log and the results folder."""
     salt = cfg.get("share_id") or ""
@@ -113,14 +140,21 @@ def build_payload(cfg, include_lists=False, log_paths=None):
     logs = arena_log.find_logs(cfg.get("arena_log")) if log_paths is None else log_paths
     reader = arena_log.read_all(logs) if logs else arena_log.LogReader()
     # rank before each game comes from the game tracker's history, when it has the game
-    ranks = {}
+    ranks, tracked = {}, {}
     try:
         tracked = json.loads((cfg.home / "tracker" / "matches.json").read_text(encoding="utf-8"))
-        ranks = {k: (v.get("rank_before") or {}).get("class") for k, v in tracked.items()}
-    except (OSError, ValueError):
+        ranks = {k: (v.get("rank_before") or {}).get("class") for k, v in tracked.items() if isinstance(v, dict)}
+    except (OSError, ValueError, AttributeError):
         pass
+    # Arena only keeps your last two sessions in its log; the game tracker keeps the rest
+    games = dict(reader.matches)
+    for mid, t in (tracked or {}).items():
+        if mid not in games:
+            m = _from_tracker(t)
+            if m is not None:
+                games[mid] = m
     raw = []
-    for m in reader.matches.values():
+    for m in games.values():
         f = event_format(m.event)
         if not f or m.result not in ("Win", "Loss", "Draw") or not m.my_deck:
             continue
