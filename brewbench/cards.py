@@ -10,7 +10,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/brewbench)", "Accept": "application/json"}
+UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/MTGASIM)", "Accept": "application/json"}
 
 
 def _arena_db_candidates():

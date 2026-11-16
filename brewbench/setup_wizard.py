@@ -15,7 +15,7 @@ from . import __version__, arena_log, forge
 
 UA = {"User-Agent": f"Brewbench/{__version__}", "Accept": "application/json"}
 FORGE_REPO = "Card-Forge/forge"
-APP_REPO = "roodolpha/brewbench"
+APP_REPO = "roodolpha/MTGASIM"
 JOBS = {}   # name -> {"state": "running|done|error", "done": bytes, "total": bytes, "error": str}
 
 

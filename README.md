@@ -32,7 +32,7 @@ tells you when a result is still too close to call.
 3. **Brewbench** (Python 3.9+):
 
    ```
-   pip install git+https://github.com/roodolpha/brewbench.git
+   pip install git+https://github.com/roodolpha/MTGASIM.git
    brewbench setup --forge-dir "C:\Games\Forge"
    brewbench doctor
    ```

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import decks as D
 
-UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/brewbench)", "Accept": "application/json"}
+UA = {"User-Agent": "Brewbench/0.1 (+https://github.com/roodolpha/MTGASIM)", "Accept": "application/json"}
 BASIC_FOR = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
 

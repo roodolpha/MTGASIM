@@ -159,7 +159,7 @@ function apiPage() {
   $("#app").innerHTML = `<h1 style="font-size:48px;font-weight:800;margin:12px 0 6px">API</h1>
   <p>Everything on this site comes from a free, open JSON API. No key needed; please cache (responses are good for 5 minutes).</p>
   <div class="panel">${ex.map((e) => `<p><code>GET ${esc(API + e)}</code></p>`).join("")}
-  <p class="dim">Full docs: <a href="https://github.com/roodolpha/brewbench/blob/main/docs/API.md">docs/API.md</a></p></div>`;
+  <p class="dim">Full docs: <a href="https://github.com/roodolpha/MTGASIM/blob/main/docs/API.md">docs/API.md</a></p></div>`;
 }
 
 const routes = [[/^#\/?$/, home], [/^#\/meta$/, metaPage], [/^#\/leaderboard$/, leaderboard], [/^#\/players$/, players],
