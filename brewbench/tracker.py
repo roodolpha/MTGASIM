@@ -117,6 +117,8 @@ def run(cfg, log=print, stop=None):
                     share.share_soon(cfg)
     except Exception as e:
         STATE.update(status="stopped by an error", error=repr(e))
+        from . import crash
+        crash.report(e, "game tracker")
         log(f"Tracker stopped: {e!r}")
 
 

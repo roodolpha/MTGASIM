@@ -103,7 +103,8 @@ async function dash() {
   $("#hdr").innerHTML = `<button class="btn ghost small" id="refresh">Refresh</button><button class="btn ghost small" id="out">Sign out</button>`;
   $("#out").onclick = () => signOut("");
   $("#refresh").onclick = dash;
-  const [st, cl, sus] = await Promise.all([call("/v1/admin/stats"), call("/v1/admin/clients?q=" + encodeURIComponent(Q)), call("/v1/admin/suspicious")]);
+  const [st, cl, sus, cr] = await Promise.all([call("/v1/admin/stats"), call("/v1/admin/clients?q=" + encodeURIComponent(Q)), call("/v1/admin/suspicious"),
+    call("/v1/admin/crashes").catch(() => ({ crashes: [] }))]);
   const days = st.last_30_days || [], max = Math.max(1, ...days.map((d) => d.games));
   $("#main").innerHTML = `
   <section class="panel"><div class="strip">
@@ -135,6 +136,14 @@ async function dash() {
     ${(sus.suspicious || []).map((c) => `<tr><td>${nameCell(c)}</td><td class="n">${n(c.games)}</td><td class="n">${pct(c.wins, c.games)}</td><td class="n">${n(c.busiest_day)}</td>
       <td><div class="acts"><button class="btn ghost small" data-hide="${esc(c.id)}" data-v="1">Hide</button></div></td></tr>`).join("") || '<tr><td colspan="5" class="dim">Nothing suspicious.</td></tr>'}
     </tbody></table></div></section>`;
+  $("#main").insertAdjacentHTML("beforeend", `<section class="panel"><div class="head"><h2>Crash reports</h2>${(cr.crashes || []).length ? '<button class="btn ghost small" id="crclear">Clear all</button>' : ""}</div>
+    <p class="dim" style="margin:-6px 0 10px">From people who turned on crash reports in the app. Grouped by problem; newest first.</p>
+    <div class="scroll"><table><thead><tr><th>Problem</th><th>Where</th><th class="n">Times</th><th class="n">Installs</th><th>Version</th><th>Last seen</th></tr></thead><tbody>
+    ${(cr.crashes || []).map((c) => `<tr><td><details><summary>${esc(c.message)}</summary><pre style="white-space:pre-wrap;font-size:12px;color:var(--dim);margin:8px 0 0">${esc(c.trace || "")}</pre></details></td>
+      <td class="dim">${esc(c.place || "")}</td><td class="n">${n(c.count)}</td><td class="n">${n(c.installs)}</td><td class="dim">${esc(c.version || "")}<div style="font-size:12px">${esc(c.os || "")}</div></td><td class="dim">${when(c.last_seen)}</td></tr>`).join("") || '<tr><td colspan="6" class="dim">No crash reports.</td></tr>'}
+    </tbody></table></div></section>`);
+  const crc = $("#crclear");
+  if (crc) crc.onclick = async () => { if (!confirm("Clear all crash reports?")) return; await call("/v1/admin/crashes", { method: "DELETE" }); dash(); };
   $("#sf").onsubmit = (e) => { e.preventDefault(); Q = $("#q").value.trim(); dash(); };
   document.querySelectorAll("[data-hide]").forEach((b) => (b.onclick = async () => {
     b.disabled = true;

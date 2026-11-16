@@ -46,6 +46,8 @@ class Jobs:
                     job.update(missing=r.missing, problems=r.problems[:6])
             except Exception as e:   # surfaced on the page
                 job.update(state="error", error=str(e))
+                from . import crash
+                crash.report(e, "sim run")
             self.history.append({k: v for k, v in job.items() if not k.startswith("_")})
 
         threading.Thread(target=go, daemon=True).start()
@@ -149,6 +151,8 @@ def start_swap(cfg, fmt, deck_path, list_b, games, opps):
             SWAP.update(state="finished", result={"paired": p, "a": sa, "b": sb, "verdict": swap_verdict(p, games)})
         except Exception as e:
             SWAP.update(state="error", error=str(e))
+            from . import crash
+            crash.report(e, "swap test")
         finally:
             _SWAP_RUN["r"] = None
     threading.Thread(target=go, name="swap-test", daemon=True).start()
@@ -180,6 +184,8 @@ def start_optimiser(cfg, fmt, deck_path, opps, pool, protect, minutes):
             OPT["state"] = "stopped" if o.stopping else "finished"
         except Exception as e:
             OPT.update(state="error", error=str(e))
+            from . import crash
+            crash.report(e, "optimiser")
         finally:
             _OPT_RUN["o"] = None
     threading.Thread(target=go, name="optimiser", daemon=True).start()
@@ -223,6 +229,8 @@ def start_gauntlet_build(cfg, fmt, use_edhrec, limit):
             GAUNTLET_JOB.update(state="done", made=made, skipped=skipped)
         except Exception as e:
             GAUNTLET_JOB.update(state="error", error=str(e))
+            from . import crash
+            crash.report(e, "build opponents")
     threading.Thread(target=run, name="gauntlet-build", daemon=True).start()
     return True
 
@@ -423,6 +431,8 @@ def make_handler(cfg, jobs):
                 pass
             except Exception as e:   # never leave the page hanging on an unexpected error
                 log.exception("request failed: %s", self.path)
+                from . import crash
+                crash.report(e, "request " + self.path.split("?")[0])
                 try:
                     self._send(500, {"error": f"Something went wrong: {e}"})
                 except Exception:
@@ -473,7 +483,7 @@ def make_handler(cfg, jobs):
             if path == "/api/diagnostics":
                 return self._send(200, diagnostics_zip(cfg), "application/zip")
             if path == "/api/settings":
-                return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec")})
+                return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec", "crash_reports")})
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
@@ -532,7 +542,7 @@ def make_handler(cfg, jobs):
                 except F.SetupError as e:
                     return self._send(400, {"error": str(e)})
             if path == "/api/settings":
-                for k, conv in (("ai_profile", str), ("instances", int), ("edhrec", bool)):
+                for k, conv in (("ai_profile", str), ("instances", int), ("edhrec", bool), ("crash_reports", bool)):
                     if k in body and body[k] not in (None, ""):
                         try:
                             cfg.set(k, conv(body[k]))
@@ -731,6 +741,8 @@ JOBS = None
 
 def serve(cfg, port=8780, open_browser=True, track=True):
     global JOBS
+    from . import crash
+    crash.setup(cfg)
     jobs = JOBS = Jobs()
     threading.Thread(target=_watch_outside, name="sim-watch", daemon=True).start()
     if track:

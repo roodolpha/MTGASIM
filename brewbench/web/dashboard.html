@@ -432,6 +432,7 @@ async function settings() {
    <label>Forge AI<select id="sai">${['Default','Cautious','Reckless','Experimental','Hard','Hardest'].map(a => `<option ${a === (s.ai_profile || 'Default') ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
    <label>Games at once<input id="sinst" type="number" min="1" max="32" value="${esc(s.instances || '')}" placeholder="auto" style="width:110px"></label>
    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="sedh" ${s.edhrec ? 'checked' : ''} style="min-height:auto"> Use EDHREC lists for Brawl opponents</label>
+   <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)" title="Sends the error message, where it happened, and your Brewbench and Windows versions. Your user name is scrubbed out. Never any Arena data, decks or games."><input type="checkbox" id="scrash" ${s.crash_reports ? 'checked' : ''} style="min-height:auto"> Send crash reports (helps fix bugs; no personal or game data)</label>
    <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
   <div class="panel"><h2 style="margin-bottom:10px">About</h2>
    <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
@@ -439,7 +440,7 @@ async function settings() {
    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
    <button class="btn ghost" id="ssetup">Setup checklist</button></div>
    <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
-  $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
+  $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked, crash_reports: $('#scrash').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
   $('#ssetup').onclick = () => show('setup');
   $('#supd').onclick = async () => { try { localStorage.removeItem('upd-hide'); } catch (e) {} await updateBanner(true); settings(); };
   shareBox();

@@ -187,3 +187,20 @@ def test_optimiser_stop_saves_and_returns(tmp_path, monkeypatch):
     monkeypatch.setattr(O.runner, "Run", R)
     report = o.run()
     assert o.stopping and "accepted" in report
+
+
+def test_crash_reports_are_opt_in_and_scrubbed(tmp_path, monkeypatch):
+    from brewbench import crash
+    cfg = Config(tmp_path / "home")
+    sent = []
+    monkeypatch.setattr(crash.threading, "Thread", lambda target, **k: type("T", (), {"start": lambda self: sent.append(1)})())
+    try:
+        raise ValueError(r"can't open C:\Users\roodo\.mtgasim\decks\x.dck")
+    except ValueError as e:
+        err = e
+    assert crash.report(err, "test", cfg) is False and not sent          # off by default: nothing sent
+    cfg.set("crash_reports", True)
+    assert crash.report(err, "test", cfg) is True and sent
+    assert crash.report(err, "test", cfg) is False                        # same problem again: not resent
+    s = crash.scrub(r"C:\Users\roodo\.mtgasim and /home/alice/x and /Users/bob/y")
+    assert "roodo" not in s and "alice" not in s and "bob" not in s

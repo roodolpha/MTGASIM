@@ -16,6 +16,14 @@ It talks to the internet for: card names, art and legality (Scryfall), downloadi
 checking the Brewbench website for a newer version, EDHREC's average decklists when you build opponent decks
 (you can untick that), and the sharing below, only if you turn it on.
 
+## Crash reports (off unless you turn them on in Settings)
+
+If you tick "Send crash reports", the app sends a report when something goes wrong: the error message and the
+lines of Brewbench's code it came from, which part of the app it was in, your Brewbench and Windows versions, and
+a random install number the app makes up (only used to count how many installs hit the same problem). Folder
+paths are scrubbed so your user name isn't included. Never any Arena data, decks, games, account or sharing key.
+Reports are kept for up to 90 days. Untick it to stop.
+
 ## If you share (off unless you turn it on in Settings)
 
 **What we receive:** for each of your real Arena games: the day (not the time), format, result, your deck's

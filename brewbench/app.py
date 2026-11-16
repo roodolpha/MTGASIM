@@ -266,6 +266,9 @@ def main(argv=None):
     cfg = Config()
     if getattr(sys, "frozen", False) or sys.stdout is None:   # windowed build: no console, log to a file
         _log_to_file(cfg)
+    from . import crash
+    crash.setup(cfg)
+    crash.install_hooks()
     threading.Thread(target=server.serve, args=(cfg, PORT), kwargs={"open_browser": False, "track": True},
                      name="brewbench-server", daemon=True).start()
     if not _wait_for_server():
