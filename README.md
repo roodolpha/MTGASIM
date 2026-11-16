@@ -23,24 +23,40 @@ this gauntlet by 4 points" is far more trustworthy than "this deck is a 57% deck
 Win rates need many games. Telling a 3-point difference apart takes about 2,000 games per deck; `compare`
 tells you when a result is still too close to call.
 
-## Setup
+## Install
 
-1. **Java 17 or newer.** [Adoptium](https://adoptium.net) is fine.
-2. **Forge 2.0.16.** Download the desktop build from [Forge's releases](https://github.com/Card-Forge/forge/releases)
-   and unpack it anywhere. (Other versions may work; if games all come back as errors, run
-   `brewbench setup --build-harness` with a JDK installed.)
-3. **Brewbench** (Python 3.9+):
+**Windows:** download [brewbench-setup.exe](https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-setup.exe)
+and run it. Brewbench opens as a normal app with a tray icon, fetches Java and Forge for you on first run, reads
+your Arena decks and the opponents you've faced, and tells you when an update is out.
 
-   ```
-   pip install git+https://github.com/roodolpha/MTGASIM.git
-   brewbench setup --forge-dir "C:\Games\Forge"
-   brewbench doctor
-   ```
+**Mac (beta):** [brewbench-mac.zip](https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-mac.zip).
+It isn't signed yet, so right-click the app and choose Open the first time.
 
-4. **Optional:** in Arena, turn on *Options > Account > Detailed Logs (Plugin Support)* so Brewbench can read
-   your decks and the opponents you've faced.
+In Arena, turn on *Options > Account > Detailed Logs (Plugin Support)* so Brewbench can read your decks.
 
-## Use
+![My games](docs/img/app-my-games.jpg)
+
+| Your decks, ladder vs sim | Test a change |
+|---|---|
+| ![Decks](docs/img/app-decks.jpg) | ![Test a change](docs/img/app-test-a-change.jpg) |
+
+The public site, [mtgasim.roododger.workers.dev](https://mtgasim.roododger.workers.dev), shows what's winning
+across everyone who chooses to share:
+
+![Site](docs/img/site-home.jpg)
+
+## Command line
+
+Everything the app does is also available from the command line (Python 3.9+, Java 17+,
+[Forge](https://github.com/Card-Forge/forge/releases) 2.0.16):
+
+```
+pip install git+https://github.com/roodolpha/MTGASIM.git
+brewbench setup --forge-dir "C:\Games\Forge"
+brewbench doctor
+```
+
+### Commands
 
 ```
 # your deck
@@ -84,7 +100,7 @@ format under `~/.brewbench/optimiser/<deck>/optimised.txt`.
 
 ## Sharing (opt in)
 
-Nothing leaves your PC unless you run `brewbench share`. It sends your real Arena games (day, format, result,
+Nothing leaves your PC unless you turn sharing on (Settings in the app, or `brewbench share`). It sends your real Arena games (day, format, result,
 your deck's colours or commander, the opponent's colours or commander), your simulator summaries, and, only
 with `--lists`, your decklists. Arena match ids are hashed, times are cut to the day, opponents are never named,
 and your Arena name is never read. You're anonymous unless you pick `--name` and `--public`.

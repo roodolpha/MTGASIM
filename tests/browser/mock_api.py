@@ -16,7 +16,7 @@ def meta(f):
     for o in out: o["share"]=o["real"]["games"]/tot
     return {"format":f,"since":"2026-10-17","real_games":tot,"decks":out}
 def lb(f):
-    names=["Player G","Player K","roodolpha","Player D","Player F","Player A","Player B","Player C","Player I","Player H","Player J","Player E"]
+    names=["Player One","Player Two","Player Three","Player Four","Player Five","Player Six","Player Seven","Player Eight","Player Nine","Player Ten","Player Eleven","Player Twelve"]
     src=B if f.endswith('brawl') else S; out=[]
     for i,n in enumerate(names):
         g=random.randint(60,420); wr=0.64-i*0.012; w=int(g*wr); d=src[i%len(src)]
