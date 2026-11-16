@@ -65,9 +65,11 @@ async function home() {
    ${playerTable(lb.players.slice(0, 6))}</div>
    <div class="cta"><div style="display:flex;flex-direction:column;gap:10px"><h2>Play your deck 1,000 times before you craft that mythic.</h2>
    <p style="margin:0;font-size:17px">The sim runs your list against the decks you actually face, on your own PC, overnight. Then it tells you if that swap actually helped or if you just got lucky.</p></div>
-   <div><a class="pill" href="https://github.com/roodolpha/brewbench">Download it, it's free</a></div></div></section>`;
+   <div style="display:flex;flex-direction:column;gap:8px"><div><a class="pill" href="${esc(window.Brewbench_DOWNLOAD)}">Download for Windows</a></div>
+   <p style="margin:0;font-size:13px">Free and open source. Windows may say it's from an unknown publisher: click More info, then Run anyway.</p></div></div></section>`;
   bindTabs(home);
 }
+document.querySelectorAll('[data-download]').forEach(a => a.href = window.Brewbench_DOWNLOAD);
 
 function playerTable(rows) {
   if (!rows.length) return '<p class="dim">Nobody public with enough games yet.</p>';
