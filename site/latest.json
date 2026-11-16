@@ -1,6 +1,6 @@
 {
- "version": "0.7.2",
+ "version": "0.7.3",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Card ideas: for each Brawl deck, the cards other decks with your commander play that yours doesn't, from EDHREC, filtered to what's legal on Arena."
+ "notes": "A fresh look that matches the website: Arena navy and gold, new fonts that work offline, and sentence-case labels throughout."
 }

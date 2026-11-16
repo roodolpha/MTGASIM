@@ -4,8 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Brewbench</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Brewbench app: same flat, data-first system as the website */
 :root{--bg:#0B0C0E;--s1:#111317;--s2:#161920;--panel:#111317;--line:#22262D;--line2:#2C313A;--text:#E6E8EB;--dim:#8A919B;--faint:#5C636D;
@@ -120,10 +118,11 @@ pre{border:1px solid var(--line)}
 #runbanner{border-left:3px solid var(--loss)!important;border-color:var(--line)}
 @media (max-width:760px){#job{display:none}.hero .ha{display:none}}
 </style>
+<link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <header>
-<a class="logo" href="/tracker">brew<span>bench</span></a>
+<a class="logo" href="/tracker"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 3h10v2h-2v8.2l7.6 12.1A3 3 0 0 1 24 30H8a3 3 0 0 1-2.6-4.7L13 13.2V5h-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9.2 22h13.6l2 3.2a1 1 0 0 1-.8 1.6H8a1 1 0 0 1-.8-1.6z" fill="currentColor"/></svg>Brewbench</a>
 <nav aria-label="Main">
 <a href="/tracker">My games</a>
 <a href="#runs" data-view="runs">Sims</a>
@@ -493,7 +492,7 @@ async function shareBox() {
     ${sh.registered ? '<button class="btn ghost" id="shforget" style="border-color:var(--loss);color:var(--loss)">Remove everything from the site</button>' : ''}
   </div>
   <p id="shmsg" class="dim" style="margin:12px 0 0" aria-live="polite">${sh.busy ? 'Sending…' : sh.error ? '<span class="err">Last try failed: ' + esc(sh.error) + '</span>' : esc(last)}</p>
-  <pre id="shpre" style="display:none;white-space:pre-wrap;max-height:320px;overflow:auto;background:#0B0B0C;border-radius:10px;padding:12px;font-size:12px;margin:12px 0 0"></pre>`;
+  <pre id="shpre" style="display:none;white-space:pre-wrap;max-height:320px;overflow:auto;background:var(--ink);border:1px solid var(--line);border-radius:3px;padding:12px;font-size:12px;margin:12px 0 0"></pre>`;
   const old = $('#sharebox'); old ? old.replaceWith(el) : $('#main').appendChild(el);
   const body = now => ({name: $('#shname').value.trim(), public: $('#shpub').checked, lists: $('#shlists').checked, auto: $('#shauto').checked, now});
   $('#shgo').onclick = async () => {

@@ -1,0 +1,62 @@
+/* Brewbench's look, shared by the app's pages and the website (site/style.css uses the same values):
+   Arena navy and gold, Barlow Condensed headings, Source Sans 3 text, plain tables, sentence-case labels.
+   Loaded after each page's own styles, so it sets the colours and type for both. */
+@font-face{font-family:"Source Sans 3";src:url(/fonts/source-sans-3-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Source Sans 3";src:url(/fonts/source-sans-3-latin-400-italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Source Sans 3";src:url(/fonts/source-sans-3-latin-600-normal.woff2) format("woff2");font-weight:500 700;font-display:swap}
+@font-face{font-family:"Barlow Condensed";src:url(/fonts/barlow-condensed-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Barlow Condensed";src:url(/fonts/barlow-condensed-latin-700-normal.woff2) format("woff2");font-weight:700 800;font-display:swap}
+
+:root{color-scheme:dark;
+  /* the palette (same as the website) */
+  --ink:#141A2A; --ink2:#1B2336; --ink3:#232D45; --rule:#2E3956; --rule2:#3A4766;
+  --cream:#ECE6D6; --mute:#A9B1C4; --faint:#8790A3; --gold:#D9B66A; --gold-ink:#221906;
+  --head:"Barlow Condensed","Arial Narrow",sans-serif; --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  /* dashboard names */
+  --bg:var(--ink); --s1:var(--ink2); --s2:var(--ink3); --line:var(--rule); --line2:var(--rule2);
+  --text:var(--cream); --dim:var(--mute); --hot:var(--gold); --sim:#8CBDEB; --win:#6CC3A0; --loss:#E58A6E; --r:3px;
+  --W:#EDE6C8; --U:#3F7FC4; --B:#5D5552; --R:#C9553D; --G:#4F8F5B;
+  /* tracker names */
+  --fg:var(--cream); --muted:var(--mute); --hover:var(--ink2); --sel:var(--ink3); --sunk:var(--ink2); --soft:var(--ink2);
+  --accent:var(--gold); --me:var(--gold); --opp:#B69BE0; --draw:#D9C27A; --panel:var(--ink2);
+}
+html{background:var(--ink)}
+body{font-family:var(--body);font-size:15px;letter-spacing:0;background:var(--ink);color:var(--cream)}
+h1,h2,h3,.page,.kpi .v,.big,.rank-name{font-family:var(--head)!important;font-weight:700;letter-spacing:.005em}
+h1,h1.page{font-size:32px}
+h2{font-size:24px}
+h3{font-size:19px}
+input,select,textarea,button{font-family:var(--body)}
+textarea{font-family:ui-monospace,Consolas,monospace}
+a:hover{text-decoration-color:var(--gold)}
+:focus-visible{outline-color:var(--gold)}
+
+/* the header: same mark and wordmark as the website */
+.logo,.brand{display:flex;align-items:center;gap:8px;font:700 24px/1 var(--head)!important;color:var(--cream)!important;text-decoration:none;letter-spacing:0}
+.logo svg,.brand svg{width:22px;height:22px;color:var(--gold)}
+header,.side{background:var(--ink)!important;backdrop-filter:none!important}
+nav a,nav button{font-weight:600}
+nav a[aria-current="page"],nav button.on{color:var(--cream);border-bottom-color:var(--gold)}
+
+/* buttons: gold for the one main action, plain otherwise */
+.btn{border-radius:3px;font:600 14px var(--body);color:var(--gold-ink)}
+.btn:hover{background:#E6C47C;border-color:#E6C47C}
+.btn.ghost{color:var(--cream);font-weight:600}
+.btn.ghost:hover{background:var(--ink3);border-color:var(--mute)}
+.btn.stop{color:#1E0B05}
+
+/* labels in sentence case, like the website */
+th{text-transform:none!important;letter-spacing:0!important;font-size:13px!important;font-weight:600!important;color:var(--mute)!important}
+.hero .kick,.kick,.eyebrow{text-transform:none!important;letter-spacing:0!important;font-size:13px!important}
+.art .tag,.art .pos{background:rgba(20,26,42,.88);border-radius:2px}
+
+/* panels and cards: square-ish corners, navy surfaces */
+.panel,.card,.empty,.strip,.updbar,.kpis{border-radius:3px}
+.card:hover{border-color:var(--rule2)}
+.tabs button[aria-selected="true"]{border-bottom-color:var(--gold)}
+input,select,textarea{border-radius:3px;background:var(--ink)}
+input[type=checkbox]{accent-color:var(--gold)}
+
+/* mana symbols (same sprite as the website) */
+.mana{display:inline-flex;gap:2px;vertical-align:-3px}
+.mana svg{width:16px;height:16px}

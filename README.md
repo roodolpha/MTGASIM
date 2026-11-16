@@ -38,9 +38,9 @@ In Arena, turn on *Options > Account > Detailed Logs (Plugin Support)* so Brewbe
 
 ![My games](docs/img/app-my-games.jpg)
 
-| Your decks, ladder vs sim | Test a change |
+| Your decks, ladder vs sim | Card ideas from EDHREC |
 |---|---|
-| ![Decks](docs/img/app-decks.jpg) | ![Test a change](docs/img/app-test-a-change.jpg) |
+| ![Decks](docs/img/app-decks.jpg) | ![Card ideas](docs/img/app-card-ideas.jpg) |
 
 The public site, [mtgasim.roododger.workers.dev](https://mtgasim.roododger.workers.dev), shows what's winning
 across everyone who chooses to share:

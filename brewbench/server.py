@@ -443,6 +443,13 @@ def make_handler(cfg, jobs):
             path = u.path.rstrip("/") or "/"
             if path == "/":
                 return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+            m = re.fullmatch(r"/(theme\.css|fonts/[a-z0-9-]+\.woff2|img/mana\.svg)", path)
+            if m:   # the shared look: same fonts, colours and mana symbols as the website
+                f = PAGE.parent / m.group(1)
+                if f.is_file():
+                    ctype = {".css": "text/css", ".woff2": "font/woff2", ".svg": "image/svg+xml"}[f.suffix]
+                    return self._send(200, f.read_bytes(), ctype)
+                return self._send(404, {"error": "not found"})
             if path == "/tracker":
                 from . import tracker
                 f = tracker.data_file(cfg)
