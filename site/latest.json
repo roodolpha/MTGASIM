@@ -1,6 +1,6 @@
 {
  "version": "0.7.0",
- "url": "https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-setup.exe",
- "page": "https://github.com/roodolpha/MTGASIM/releases/latest",
+ "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
+ "page": "https://mtgasim.roododger.workers.dev/",
  "notes": "Test a change: see if a swap really helped. One-click meta gauntlets, an Optimiser screen, ladder vs sim on every deck, and opponents weighted by how often you face them."
 }

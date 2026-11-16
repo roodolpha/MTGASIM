@@ -97,7 +97,7 @@ async function home() {
     <section class="panel"><header><h2>Top players, 30 days</h2><a href="#/leaderboard">All</a></header>${playerTable(lb.players.slice(0, 8), FMT, true)}</section>
     <section class="panel get"><div class="pad"><h2>Test your deck before you craft</h2>
       <p>Brewbench plays your list against the decks you actually face, on your own PC, thousands of times. Then it tells you whether a change really helped or you just got lucky.</p>
-      <a class="btn primary" href="${esc(window.Brewbench_DOWNLOAD)}">Download for Windows</a> <a class="btn" href="https://github.com/roodolpha/MTGASIM">Source</a>
+      <a class="btn primary" href="${esc(window.Brewbench_DOWNLOAD)}">Download for Windows</a> <a class="btn" href="/download/mac">Mac (beta)</a> <a class="btn" href="https://github.com/roodolpha/MTGASIM">Source</a>
       <small>Free and open source. Until the app is signed, Windows may warn about an unknown publisher: choose More info, then Run anyway.</small></div></section>
   </div></div>`;
   bindTabs(home);

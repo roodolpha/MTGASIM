@@ -24,7 +24,7 @@ jobs:
           $v = "${{ github.ref_name }}".TrimStart("v")
           choco install innosetup -y --no-progress
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" packaging\installer.iss
-          # a fixed name too, so the website can always link to .../releases/latest/download/brewbench-setup.exe
+          # a fixed name too, so the site's /download/windows can always stream the latest one
           Copy-Item "dist\brewbench-setup-$v.exe" "dist\brewbench-setup.exe"
       # Signing: see docs/RELEASING.md (SignPath Foundation for the installer; the Store signs the MSIX itself).
       - name: "MSIX for the Microsoft Store (unsigned, the Store signs it)"

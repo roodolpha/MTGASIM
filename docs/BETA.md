@@ -5,7 +5,7 @@ and tracks your real Arena games. Everything runs on your PC.
 
 ## Install
 
-1. Download **brewbench-setup.exe** from https://github.com/roodolpha/MTGASIM/releases/latest
+1. Download **brewbench-setup.exe** from https://mtgasim.roododger.workers.dev/download/windows
 2. Windows may say "Windows protected your PC" because the app isn't signed yet. Click **More info**, then **Run anyway**.
 3. In MTG Arena: **Options > Account > Detailed Logs (Plugin Support)** on, then restart Arena. Brewbench only ever
    reads Arena's log file.
@@ -37,7 +37,7 @@ account and your sharing key. Say what you did, what you expected, and what happ
 > into (using Forge's AI), so you can tell whether a change really helped, and it tracks your Arena games.
 > Everything runs on your own PC.
 >
-> Download: https://github.com/roodolpha/MTGASIM/releases/latest
+> Download: https://mtgasim.roododger.workers.dev/download/windows
 > Quick guide and how to report bugs: https://github.com/roodolpha/MTGASIM/blob/main/docs/BETA.md
 >
 > It's not signed yet, so Windows will warn about an unknown publisher: More info, then Run anyway.
