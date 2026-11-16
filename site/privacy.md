@@ -2,7 +2,7 @@
 
 *Plain-English version. Last updated: 16 November 2026.*
 
-**Who's responsible:** roodolpha, the developer who runs Brewbench. Contact: open an issue at [github.com/roodolpha/MTGASIM/issues](https://github.com/roodolpha/MTGASIM/issues), or for anything you'd rather not post publicly, ask there for a private contact and you'll be given one.
+**Who's responsible:** roodolpha, the developer who runs Brewbench. Contact: ask in the [Brewbench Discord](https://discord.gg/kTnCXydsgC), open an issue at [github.com/roodolpha/MTGASIM/issues](https://github.com/roodolpha/MTGASIM/issues), or for anything you'd rather not post publicly, ask there for a private contact and you'll be given one.
 
 ## The app on your PC
 

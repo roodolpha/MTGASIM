@@ -32,6 +32,8 @@ your Arena decks and the opponents you've faced, and tells you when an update is
 **Mac (beta):** [brewbench-mac.zip](https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-mac.zip).
 It isn't signed yet, so right-click the app and choose Open the first time.
 
+Questions, bugs or results to share: join the [Brewbench Discord](https://discord.gg/kTnCXydsgC).
+
 In Arena, turn on *Options > Account > Detailed Logs (Plugin Support)* so Brewbench can read your decks.
 
 ![My games](docs/img/app-my-games.jpg)

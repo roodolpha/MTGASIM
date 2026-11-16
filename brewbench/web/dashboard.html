@@ -438,7 +438,8 @@ async function settings() {
    <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
    <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out</b> (see the banner up top).` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'} <button class="btn ghost" id="supd" style="min-height:32px;padding:0 12px;font-size:13px;margin-left:6px">Check now</button></p>
    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
-   <button class="btn ghost" id="ssetup">Setup checklist</button></div>
+   <button class="btn ghost" id="ssetup">Setup checklist</button>
+   <a class="btn ghost" href="https://discord.gg/kTnCXydsgC" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none">Join the Discord</a></div>
    <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
   $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked, crash_reports: $('#scrash').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
   $('#ssetup').onclick = () => show('setup');
