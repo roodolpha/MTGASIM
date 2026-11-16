@@ -2835,6 +2835,29 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.body.className = 'tab-'+b.dataset.tab;
   try{ sessionStorage.setItem('tab', b.dataset.tab); }catch(e){}
 });
+/* ---------- public build: facts and stats only, no coaching ----------
+   Brewbench is for everyone, and helping someone mid-game (or grading their play) isn't its job. Everything
+   below that tells you what you should have done is switched off; your numbers, charts and history stay. */
+const PUBLIC = true;
+if (PUBLIC) {
+  const none = () => '';
+  decisionsHtml = none; decisionsOverview = none; whatifHtml = none;
+  playReviewHtml = none; playReviewOverview = none; attackReviewHtml = none; attackOverview = none;
+  lessonsHtml = none; stopLossHtml = none; tiltOverview = none; gamePlan = none;
+  playbookHtml = none; playbookFrom = none; modelOverview = none; feedbackOverview = none;
+  const _ins = insights;
+  insights = () => _ins()
+    .filter(i => !/left free damage|missed lethal|play review suggests/.test(i.text))
+    .map(i => ({...i, text: i.text.replace(/ Check the Matchups tab for a plan\./, '').replace(/ Protecting it is your biggest lever\./, '')}));
+  const _mull = mulliganHtml;
+  mulliganHtml = () => _mull().replace(/>keep</g, '>better than after a mulligan<').replace(/a mulligan has done better/g, 'worse than after a mulligan');
+  PANES.splice(PANES.findIndex(([id]) => id === 'decisions'), 1);
+  for (let i = PANE_OF.length - 1; i >= 0; i--) if (PANE_OF[i][1] === 'decisions') PANE_OF.splice(i, 1);
+  renderPractice = () => {};
+  document.querySelector('nav button[data-tab="practice"]')?.remove();
+  document.getElementById('tab-practice')?.classList.add('hidden');
+  if (currentPane === 'decisions') currentPane = 'summary';
+}
 selected = (location.hash.slice(1) && M.some(m=>m.match_id===location.hash.slice(1))) ? location.hash.slice(1) : (M[0]||{}).match_id;
 buildVersions(); header(); renderList(); renderDetail(); renderOverview(); renderMatchups(); renderUpgrades(); renderPractice(); renderHighlights();
 try{ const t=sessionStorage.getItem('tab'); if(t) document.querySelector(`nav button[data-tab="${t}"]`)?.click(); }catch(e){}
