@@ -54,24 +54,24 @@ const head = (title, text) => `<div class="pagehead"><h1>${title}</h1>${text ? `
 
 function deckTable(decks, f, { limit = 30, ranks = true, compact = false } = {}) {
   if (!decks.length) return `<div class="empty">Not enough shared games in ${esc(fmtName(f))} yet.</div>`;
-  return `<div class="scroll"><table><thead><tr>${ranks ? "<th></th>" : ""}<th>Deck</th><th class="n">Play rate</th><th class="n">Ladder win rate</th><th>Range</th><th class="n">Sim win rate</th><th class="n">Games</th></tr></thead><tbody>
+  return `<div class="scroll"><table><thead><tr>${ranks ? "<th></th>" : ""}<th>Deck</th><th class="n opt">Play rate</th><th class="n">Ladder win rate</th><th class="opt">Range</th><th class="n">Sim win rate</th><th class="n opt">Games</th></tr></thead><tbody>
   ${decks.slice(0, limit).map((d, i) => `<tr>${ranks ? `<td class="rank">${i + 1}</td>` : ""}
     <td><div class="deckcell">${thumb(d.deck, d.colours, f)}<div style="min-width:0"><div class="dname">${esc(label(d.deck, f))}</div>${isBrawl(f) ? "" : `<span class="sub">${pips(d.colours || d.deck)}</span>`}</div></div></td>
-    <td class="n">${pct(d.share)}</td>
+    <td class="n opt">${pct(d.share)}</td>
     <td class="n wr">${d.real ? pct(d.real.win_rate) : "–"}</td>
-    <td>${ci(d.real)}</td>
+    <td class="opt">${ci(d.real)}</td>
     <td class="n sim">${d.sim ? pct(d.sim.win_rate) : "–"}</td>
-    <td class="n dim">${num(d.real ? d.real.games : 0)}${d.sim && !compact ? `<span class="sub">${num(d.sim.games)} simmed</span>` : ""}</td></tr>`).join("")}
+    <td class="n dim opt">${num(d.real ? d.real.games : 0)}${d.sim && !compact ? `<span class="sub">${num(d.sim.games)} simmed</span>` : ""}</td></tr>`).join("")}
   </tbody></table></div>`;
 }
 
 function playerTable(rows, f, compact) {
   if (!rows.length) return '<div class="empty">Nobody public with enough games yet.</div>';
-  return `<div class="scroll"><table><thead><tr><th></th><th>Player</th>${compact ? "" : "<th>Main deck</th>"}<th class="n">Win rate</th>${compact ? "" : "<th>Range</th>"}<th class="n">Games</th></tr></thead><tbody>${rows.map((r) => `<tr>
+  return `<div class="scroll"><table><thead><tr><th></th><th>Player</th>${compact ? "" : '<th class="opt">Main deck</th>'}<th class="n">Win rate</th>${compact ? "" : '<th class="opt">Range</th>'}<th class="n">Games</th></tr></thead><tbody>${rows.map((r) => `<tr>
    <td class="rank">${r.pos}</td>
    <td><a href="#/player/${encodeURIComponent(r.name)}" style="font-weight:500;text-decoration:none">${esc(r.name)}</a>${compact ? `<span class="sub">${esc(label(r.main_deck, f) || "")}</span>` : ""}</td>
-   ${compact ? "" : `<td><div class="deckcell">${thumb(r.main_deck, r.colours, f)}<span class="dname">${esc(label(r.main_deck, f) || "")}</span></div></td>`}
-   <td class="n wr">${pct(r.win_rate)}</td>${compact ? "" : `<td>${ci(r)}</td>`}
+   ${compact ? "" : `<td class="opt"><div class="deckcell">${thumb(r.main_deck, r.colours, f)}<span class="dname">${esc(label(r.main_deck, f) || "")}</span></div></td>`}
+   <td class="n wr">${pct(r.win_rate)}</td>${compact ? "" : `<td class="opt">${ci(r)}</td>`}
    <td class="n dim">${num(r.games)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
