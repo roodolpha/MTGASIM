@@ -246,12 +246,72 @@ def run_detail(cfg, run_id):
             "length": [{"turn": k, "games": v[0], "wins": v[1]} for k, v in sorted(turns.items())]}
 
 
+_RECORD = {"key": None, "data": None}
+
+
+def deck_records(cfg):
+    """How each saved deck has done: on the ladder (from the game tracker) and in sims (from the results folder).
+    {deck id: {"ladder": {games, win_rate}, "sim": {games, win_rate}}}. Cached until those files change."""
+    tf = cfg.home / "tracker" / "matches.json"
+    rd = cfg.results_dir
+    key = (tf.stat().st_mtime if tf.exists() else 0, len(list(rd.glob("*.jsonl"))) if rd.exists() else 0,
+           max((p.stat().st_mtime for p in rd.glob("*.jsonl")), default=0) if rd.exists() else 0,
+           len(list(cfg.decks_dir.glob("*.dck"))))
+    if _RECORD["key"] == key:
+        return _RECORD["data"]
+    decks = {p.stem: D.read_dck(p) for p in cfg.decks_dir.glob("*.dck")}
+    by_arena = {d.arena_id: stem for stem, d in decks.items() if d.arena_id}
+    by_cmd = {}
+    for stem, d in decks.items():
+        if d.commanders and not d.arena_id:
+            by_cmd.setdefault(d.commanders[0].lower(), stem)
+    out = {}
+
+    def add(stem, kind, points, games):
+        tot = out.setdefault(stem, {}).setdefault(kind, [0.0, 0])
+        tot[0] += points
+        tot[1] += games
+    try:
+        tracked = json.loads(tf.read_text(encoding="utf-8")) if tf.exists() else {}
+    except ValueError:
+        tracked = {}
+    book = None
+    for m in (tracked or {}).values():
+        if not isinstance(m, dict) or m.get("result") not in ("Win", "Loss", "Draw"):
+            continue
+        pts = {"Win": 1.0, "Draw": 0.5}.get(m["result"], 0.0)
+        dk = m.get("deck") if isinstance(m.get("deck"), dict) else {}
+        stem = by_arena.get(dk.get("id"))
+        if stem is None and by_cmd:
+            from . import cards as C, share
+            book = book or C.CardBook(cfg.cache_dir / "cards.json")
+            ids = share._ids(m.get("my_commanders"))
+            name = D.clean_name(book.name(ids[0]) or "") if ids else ""
+            stem = by_cmd.get(name.lower())
+        if stem:
+            add(stem, "ladder", pts, 1)
+    for r in run_list(cfg):
+        s = r.get("summary") or {}
+        stem = Path(str(r.get("deck") or "")).stem
+        if stem in decks and s.get("games"):
+            add(stem, "sim", (s.get("win_rate") or 0) * s["games"], s["games"])
+    data = {stem: {k: {"games": n, "win_rate": w / n} for k, (w, n) in v.items() if n} for stem, v in out.items()}
+    _RECORD.update(key=key, data=data)
+    return data
+
+
 def deck_list(cfg):
     arena_decks.sync_soon(cfg)   # in the background: new Arena decks show up on the next refresh
     out = []
+    try:
+        rec = deck_records(cfg)
+    except Exception as e:
+        log.warning("deck records failed: %s", e)
+        rec = {}
     for p in sorted(cfg.decks_dir.glob("*.dck")):
         d = D.read_dck(p)
         out.append({"id": p.stem, "name": d.name, "cards": d.total, "main": d.size, "commanders": d.commanders,
+                    "ladder": (rec.get(p.stem) or {}).get("ladder"), "sim": (rec.get(p.stem) or {}).get("sim"),
                     "format": d.format, "from_arena": bool(d.arena_id), "list": d.to_arena(),
                     "updated": p.stat().st_mtime})
     return out

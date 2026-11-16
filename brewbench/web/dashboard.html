@@ -81,6 +81,8 @@ tr.go{cursor:pointer} tr.go:hover td{background:var(--s2)}
 .nums{display:flex;gap:18px}
 .nums small{display:block;font-size:11px;color:var(--dim)}
 .nums b{font-size:18px;font-weight:600}
+.card .body .btn{height:28px;padding:0 9px;font-size:12px}
+.card .body > div:last-child{gap:6px!important}
 /* tabs: underline */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
 .tabs button{all:unset;cursor:pointer;padding:9px 12px;color:var(--dim);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
@@ -304,6 +306,10 @@ async function decks() {
   <section><div class="row">${list.map(d => `
     <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span>${d.format ? `<span class="tag r">${esc(fname(d.format))}</span>` : ''}</div>
     <div class="body"><div class="name">${esc(d.name)}</div><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || (d.from_arena ? 'From Arena' : 'Pasted in'))}</div>
+    ${d.ladder || d.sim ? `<div class="nums" title="Ladder: your real games with this deck. Sim: all its simulated games. The closer they are, the more you can trust the sims for this deck.">
+      <div><small>Ladder</small><b>${d.ladder ? pct(d.ladder.win_rate) : '–'}</b><small>${d.ladder ? d.ladder.games.toLocaleString() + ' games' : 'no games yet'}</small></div>
+      <div><small>Sim</small><b class="sim">${d.sim ? pct(d.sim.win_rate) : '–'}</b><small>${d.sim ? d.sim.games.toLocaleString() + ' games' : 'not simmed yet'}</small></div>
+      ${d.ladder && d.sim && d.ladder.games >= 30 && d.sim.games >= 100 ? `<div><small>Gap</small><b>${((d.sim.win_rate - d.ladder.win_rate) * 100 >= 0 ? '+' : '') + ((d.sim.win_rate - d.ladder.win_rate) * 100).toFixed(1)}</b><small>points</small></div>` : ''}</div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="#new" data-sim="${esc(d.id)}">Sim it</a><a class="btn ghost" href="#swap/${esc(d.id)}">Test a change</a><button class="btn ghost" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
   <div class="grid2"><div class="panel"><details><summary style="cursor:pointer;font-weight:700">Paste a deck instead</summary>
   <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
