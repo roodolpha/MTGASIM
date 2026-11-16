@@ -52,7 +52,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 [Run]
 Filename: "{app}\brewbench.exe"; Description: "Open Brewbench now"; Flags: nowait postinstall skipifsilent
 ; an update started from inside the app (/VERYSILENT /UPDATE): reopen it when done
-Filename: "{app}\brewbench.exe"; Flags: nowait runasoriginaluser; Check: IsAppUpdate
+Filename: "{app}\brewbench.exe"; Parameters: "--after-update"; Flags: nowait runasoriginaluser; Check: IsAppUpdate
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM brewbench.exe /F"; Flags: runhidden; RunOnceId: "StopApp"

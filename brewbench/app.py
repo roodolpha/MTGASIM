@@ -265,6 +265,13 @@ def main(argv=None):
     if "--selftest" in argv:
         return selftest()
     background = "--background" in argv or "--no-browser" in argv
+    if "--after-update" in argv:
+        # reopened by the installer: the old copy may still be closing, so give it time rather than
+        # mistaking it for a running copy and quitting (which left nothing open after an update)
+        for _ in range(60):
+            if not _running():
+                break
+            time.sleep(0.5)
     if _running():
         # already open: bring that window forward (or, for an old version without the window, open the page)
         if not background and not _ask_running_copy_to_show():

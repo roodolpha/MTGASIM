@@ -94,7 +94,8 @@ def install(on_ready_to_quit=None):
             _download(info["url"], dest)
             st["state"] = "starting"
             # /UPDATE tells the installer to reopen Brewbench when it's done
-            subprocess.Popen([dest, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/UPDATE"],
+            subprocess.Popen([dest, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/UPDATE",
+                              "/LOG=" + os.path.join(folder, "update-install.log")],
                              close_fds=True, creationflags=0x00000008 | 0x00000200)   # detached, new group
             if on_ready_to_quit:
                 threading.Timer(1.5, on_ready_to_quit).start()
