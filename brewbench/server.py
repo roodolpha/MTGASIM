@@ -74,6 +74,84 @@ def _watch_outside(stop_after=None):
         time.sleep(5)
 
 
+# "Did this swap help?": the same deck in two versions, on the same seeds, so only the cards differ
+SWAP = {"state": "idle"}
+_SWAP_RUN = {"r": None}
+
+
+def deck_changes(a, b):
+    """Cards taken out of A and put into B, as [(name, qty)] lists."""
+    from collections import Counter as _C
+    ca, cb = _C(a.main) + _C({c: 1 for c in a.commanders}), _C(b.main) + _C({c: 1 for c in b.commanders})
+    return sorted((ca - cb).items()), sorted((cb - ca).items())
+
+
+def swap_verdict(p, games):
+    """Plain-English reading of a paired comparison where diff = A - B; we report B - A ("the change")."""
+    if p.get("diff") is None:
+        return {"kind": "none", "text": "Not enough games finished to compare."}
+    change, se = -p["diff"], abs(p["diff"] / p["z"]) if p.get("z") else 0
+    lo, hi = change - 1.96 * se, change + 1.96 * se
+    pts = lambda x: f"{100 * x:+.1f}"
+    rng = f"probably between {pts(lo)} and {pts(hi)} points"
+    if p["p_value"] is not None and p["p_value"] > 0.95:
+        return {"kind": "better", "change": change, "lo": lo, "hi": hi,
+                "text": f"The change helped: {pts(change)} points of win rate ({rng})."}
+    if p["p_value"] is not None and p["p_value"] < 0.05:
+        return {"kind": "worse", "change": change, "lo": lo, "hi": hi,
+                "text": f"The change made it worse: {pts(change)} points ({rng})."}
+    need = None
+    if se and abs(change) >= 0.005:
+        import math
+        sd = se * math.sqrt(p["n"])
+        need = max(0, math.ceil((1.96 * sd / abs(change)) ** 2) - p["n"])
+    return {"kind": "unclear", "change": change, "lo": lo, "hi": hi, "more": need,
+            "text": f"Too close to call: {pts(change)} points, {rng}."
+                    + (f" About {need:,} more games each would settle a gap this size." if need else
+                       " Any real difference is small.")}
+
+
+def start_swap(cfg, fmt, deck_path, list_b, games, opps):
+    if SWAP.get("state") == "running":
+        raise RuntimeError("A swap test is already running.")
+    a = D.read_dck(deck_path)
+    b = D.parse_arena(list_b, a.name + " (B)")
+    b.format, b.name = a.format, a.name + " (B)"
+    if not b.size:
+        raise ValueError("Version B has no cards: paste or edit the list.")
+    out_, in_ = deck_changes(a, b)
+    if not out_ and not in_:
+        raise ValueError("Version B is the same as your deck. Change some cards first.")
+    folder = cfg.home / "swaps"
+    folder.mkdir(parents=True, exist_ok=True)
+    pb = b.save(folder / f"{deck_path.stem}-b.dck")
+    seed = int(time.time()) % 100000
+    SWAP.clear()
+    SWAP.update(state="running", phase="A", deck=a.name, format=fmt.key, games=games, done=0, out=out_, into=in_,
+                result=None, error=None)
+
+    def go():
+        try:
+            res = []
+            for phase, path, label in (("A", deck_path, a.name), ("B", pb, b.name)):
+                SWAP["phase"] = phase
+                r = runner.Run(cfg, fmt, path, opps, games, seed=seed, label=label, out_dir=folder / "results",
+                               log=lambda *_: None)
+                _SWAP_RUN["r"] = r
+                res.append(r.start(lambda d, t: SWAP.update(done=d + (games if phase == "B" else 0))))
+                if r.stopping:
+                    SWAP.update(state="stopped")
+                    return
+            p = stats.paired(res[0], res[1])
+            sa, sb = stats.summary(res[0]), stats.summary(res[1])
+            SWAP.update(state="finished", result={"paired": p, "a": sa, "b": sb, "verdict": swap_verdict(p, games)})
+        except Exception as e:
+            SWAP.update(state="error", error=str(e))
+        finally:
+            _SWAP_RUN["r"] = None
+    threading.Thread(target=go, name="swap-test", daemon=True).start()
+
+
 # building opponent decks takes a while (one EDHREC + Scryfall lookup each), so it runs in the background
 GAUNTLET_JOB = {"state": "idle", "format": None, "done": 0, "total": 0, "current": "", "made": [], "skipped": [],
                 "error": None}
@@ -268,6 +346,8 @@ def make_handler(cfg, jobs):
                 data = f.read_text(encoding="utf-8") if f.exists() else '{"matches":[],"cards":{}}'
                 page = TRACKER_PAGE.read_text(encoding="utf-8").replace("/*__DATA__*/{}", data.replace("</", "<\\/"))
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+            if path == "/api/swap":
+                return self._send(200, {k: v for k, v in SWAP.items()})
             if path == "/api/gauntlet":
                 fk = parse_qs(u.query).get("format", ["brawl"])[0]
                 if fk not in formats.FORMATS:
@@ -302,7 +382,8 @@ def make_handler(cfg, jobs):
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
-                                        "job": jobs.view(), "outside": {k: _OUTSIDE[k] for k in ("games", "drivers")}})
+                                        "job": jobs.view(), "outside": {k: _OUTSIDE[k] for k in ("games", "drivers")},
+                                        "swap": {k: SWAP.get(k) for k in ("state", "phase", "done", "games", "deck")}})
             if path == "/api/runs":
                 return self._send(200, run_list(cfg))
             if path.startswith("/api/runs/"):
@@ -397,8 +478,27 @@ def make_handler(cfg, jobs):
                 except Exception as e:
                     return self._send(502, {"error": str(e)})
                 return self._send(200, {"ok": True})
+            if path == "/api/swap":
+                fk = str(body.get("format") or "")
+                stem = str(body.get("deck") or "")
+                if fk not in formats.FORMATS or not re.fullmatch(r"[A-Za-z0-9_.-]+", stem):
+                    return self._send(400, {"error": "Pick a deck and a format."})
+                src = cfg.decks_dir / f"{stem}.dck"
+                opps = gauntlet.list_decks(cfg.gauntlet_dir(fk))
+                if not src.exists():
+                    return self._send(400, {"error": "No such deck."})
+                if not opps:
+                    return self._send(400, {"error": "That format has no opponents yet. Add some on the Decks page."})
+                games = max(20, min(5000, int(body.get("games") or 400)))
+                try:
+                    start_swap(cfg, formats.get(fk), src, str(body.get("list_b") or ""), games, opps)
+                except (ValueError, RuntimeError) as e:
+                    return self._send(400, {"error": str(e)})
+                return self._send(200, {k: v for k, v in SWAP.items()})
             if path == "/api/stop":   # stops everything: the app's run and any started from the command line
                 jobs.stop()
+                if _SWAP_RUN["r"] is not None:
+                    _SWAP_RUN["r"].stop()
                 n = runner.kill_all_sims()
                 _OUTSIDE.update(games=0, drivers=0)
                 return self._send(200, {"ok": True, "job": jobs.view(), "ended": n})

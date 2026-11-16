@@ -147,3 +147,18 @@ def test_download_meta_saves_and_replaces(tmp_path, monkeypatch):
     assert gauntlet.download_meta(cfg, fmt, api="https://x") == ["Mono-Red Aggro"]   # too-small list skipped
     names = sorted(p.name for p in folder.iterdir())
     assert names == ["meta-mono-red-aggro.dck", "mine.dck"]                         # old meta replaced, yours kept
+
+
+def test_swap_verdict_and_changes():
+    from collections import Counter
+    from brewbench import server
+    a = D.Deck(name="A", commanders=["Zimone"], main=Counter({"Opt": 1, "Island": 98}))
+    b = D.Deck(name="B", commanders=["Zimone"], main=Counter({"Ponder": 1, "Island": 98}))
+    assert server.deck_changes(a, b) == ([("Opt", 1)], [("Ponder", 1)])
+    better = server.swap_verdict({"n": 400, "diff": -0.06, "z": -3.0, "p_value": 0.998}, 400)
+    assert better["kind"] == "better" and "+6.0" in better["text"]
+    worse = server.swap_verdict({"n": 400, "diff": 0.06, "z": 3.0, "p_value": 0.002}, 400)
+    assert worse["kind"] == "worse"
+    unclear = server.swap_verdict({"n": 400, "diff": -0.01, "z": -0.5, "p_value": 0.69}, 400)
+    assert unclear["kind"] == "unclear" and unclear["more"] > 0
+    assert server.swap_verdict({"n": 1, "diff": None, "z": None, "p_value": None}, 1)["kind"] == "none"

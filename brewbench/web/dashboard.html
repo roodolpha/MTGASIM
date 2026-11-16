@@ -140,9 +140,9 @@ const art = name => name ? 'https://api.scryfall.com/cards/named?format=image&ve
 const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {}).then(r => r.json());
 let STATUS = {formats: []}, DECKS = [];
 
-const VIEWS = () => ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup});
+const VIEWS = () => ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup, swap: swapPage});
 function show(view, arg) {
-  const h = view === 'run' ? '#run/' + encodeURIComponent(arg) : '#' + view;
+  const h = arg ? '#' + view + '/' + encodeURIComponent(arg) : '#' + view;
   if (location.hash !== h) history.replaceState(null, '', h);
   const tab = view === 'run' ? 'runs' : view;
   document.querySelectorAll('nav a[data-view]').forEach(a => a.dataset.view === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
@@ -167,7 +167,7 @@ function deckArt(d) {
 
 async function runs() {
   const all = await api('/api/runs');
-  const head = `<div class="plain"><div class="secthead" style="margin:0"><h1 class="page">Sims</h1><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="#new">New run</a></div>`;
+  const head = `<div class="plain"><div class="secthead" style="margin:0"><h1 class="page">Sims</h1><span style="display:flex;gap:8px"><a class="btn ghost" href="#swap">Test a change</a><a class="btn" href="#new">New run</a></span></div>`;
   if (!all.length) { $('#main').innerHTML = head + `<p class="dim" style="margin:0">Nothing simulated yet. Add a deck, then start a run and leave it going.</p></div>`; return; }
   const games = all.reduce((n, r) => n + ((r.summary || {}).games || 0), 0);
   const best = all.filter(r => (r.summary || {}).games >= 50).sort((x, y) => y.summary.win_rate - x.summary.win_rate)[0];
@@ -206,6 +206,45 @@ async function runPage(id) {
 }
 
 let DFMT = '', OPPFMT = '';
+// ---- "Did this swap help?": your deck vs an edited copy, on the same shuffles and opponents
+async function swapPage(pick) {
+  DECKS = await api('/api/decks');
+  const sw = await api('/api/swap');
+  const running = sw.state === 'running';
+  const fmts = (STATUS.formats || []);
+  const cur = DECKS.find(d => d.id === pick) || DECKS[0] || {};
+  const changes = (sw.out || []).length || (sw.into || []).length ? `<p class="dim" style="margin:6px 0 0">Out: ${(sw.out || []).map(([n, q]) => esc(q + ' ' + n)).join(', ') || 'nothing'} · In: ${(sw.into || []).map(([n, q]) => esc(q + ' ' + n)).join(', ') || 'nothing'}</p>` : '';
+  let result = '';
+  if (sw.state === 'finished' && sw.result) {
+    const v = sw.result.verdict, a = sw.result.a, b = sw.result.b;
+    const col = v.kind === 'better' ? 'var(--win)' : v.kind === 'worse' ? 'var(--loss)' : 'var(--text)';
+    result = `<section class="panel" style="border-left:3px solid ${col}"><h2 style="margin-bottom:6px">${v.kind === 'better' ? 'It helped' : v.kind === 'worse' ? 'It made it worse' : 'Too close to call'}</h2>
+      <p style="margin:0 0 10px">${esc(v.text)}</p>
+      <div class="strip"><div><b>${pct(a.win_rate)}</b><span>your deck (${a.games} games)</span></div><div><b>${pct(b.win_rate)}</b><span>with the change (${b.games} games)</span></div>
+      <div><b style="color:${col}">${v.change != null ? (v.change >= 0 ? '+' : '') + (100 * v.change).toFixed(1) : '–'}</b><span>points</span></div><div><b>${sw.result.paired.changed ?? '–'}</b><span>games that went differently</span></div></div>
+      ${changes}</section>`;
+  } else if (sw.state === 'error') result = `<p class="err">${esc(sw.error)}</p>`;
+  else if (sw.state === 'stopped') result = '<p class="dim">Stopped.</p>';
+  $('#main').innerHTML = `<div class="plain"><button class="back" id="swback">← All sims</button><h1 class="page">Test a change</h1>
+    <p class="dim" style="margin:0">Edit a copy of your deck and both versions play the same games: same shuffles, same opponents. Any difference comes from the cards, not luck.</p></div>
+    ${running ? `<section class="panel"><b>Testing a change to ${esc(sw.deck)}</b><p class="dim" style="margin:6px 0 10px">Playing ${sw.phase === 'A' ? 'your deck' : 'the changed version'}: ${sw.done}/${2 * sw.games} games.</p>${changes}<p style="margin:10px 0 0"><button class="btn stop" id="swstop">Stop</button></p></section>` : result}
+    <section class="panel"><div class="form" style="margin-bottom:12px">
+      <label>Deck<select id="swdeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === cur.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>
+      <label>Format<select id="swfmt">${fmts.map(f => `<option value="${esc(f.key)}" ${f.key === (cur.format || 'brawl') ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>
+      <label>Games each<select id="swn"><option>200</option><option selected>400</option><option>1000</option><option>2000</option></select></label>
+    </div>
+    <label>The changed version: edit the list below (swap cards in and out, keep the format)<textarea id="swlist" style="min-height:300px">${esc(cur.list || '')}</textarea></label>
+    <p style="margin:12px 0 0"><button class="btn" id="swgo" ${running ? 'disabled' : ''}>Run both versions</button> <span id="swmsg" class="dim"></span></p></section>`;
+  $('#swback').onclick = () => show('runs');
+  $('#swdeck').onchange = () => { const d = DECKS.find(x => x.id === $('#swdeck').value); if (d) { $('#swlist').value = d.list; if (d.format) $('#swfmt').value = d.format; } };
+  $('#swgo').onclick = async () => {
+    const r = await api('/api/swap', {deck: $('#swdeck').value, format: $('#swfmt').value, games: +$('#swn').value, list_b: $('#swlist').value});
+    if (r.error) { $('#swmsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>'; return; }
+    swapPage($('#swdeck').value);
+  };
+  const st = $('#swstop'); if (st) st.onclick = () => stopAll(st);
+  if (running) setTimeout(() => { if (location.hash.startsWith('#swap')) swapPage(pick); }, 2000);
+}
 // ---- Opponents: the decks your deck is simmed against, per format
 async function opponents() {
   const box = $('#opp'); if (!box) return;
@@ -265,7 +304,7 @@ async function decks() {
   <section><div class="row">${list.map(d => `
     <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span>${d.format ? `<span class="tag r">${esc(fname(d.format))}</span>` : ''}</div>
     <div class="body"><div class="name">${esc(d.name)}</div><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || (d.from_arena ? 'From Arena' : 'Pasted in'))}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="#new" data-sim="${esc(d.id)}">Sim it</a><button class="btn ghost" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="#new" data-sim="${esc(d.id)}">Sim it</a><a class="btn ghost" href="#swap/${esc(d.id)}">Test a change</a><button class="btn ghost" data-rm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></div></div></div>`).join('') || '<div class="empty">No decks yet. Open Arena once (with Detailed Logs on) and they\'ll appear here, or paste one below.</div>'}</div></section>
   <div class="grid2"><div class="panel"><details><summary style="cursor:pointer;font-weight:700">Paste a deck instead</summary>
   <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
   <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>
@@ -421,9 +460,10 @@ async function stopAll(btn) {
   if (location.hash.startsWith('#runs') || location.hash === '#new') setTimeout(() => route(), 1500);
 }
 function simming() {
-  const j = STATUS.job, o = STATUS.outside || {};
+  const j = STATUS.job, o = STATUS.outside || {}, sw = STATUS.swap || {};
   const mine = j && (j.state === 'running' || j.state === 'stopping');
-  return {mine, j, outside: !mine && (o.games || o.drivers), any: mine || o.games || o.drivers};
+  const swap = sw.state === 'running';
+  return {mine, j, swap, sw, outside: !mine && !swap && (o.games || o.drivers), any: mine || swap || o.games || o.drivers};
 }
 let POLL;
 async function poll() {
@@ -431,7 +471,8 @@ async function poll() {
   try {
     STATUS = await api('/api/status');
     const s = simming(), j = s.j;
-    const text = s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
+    const text = s.swap ? `Testing a change to ${esc(s.sw.deck)}: ${s.sw.done}/${2 * s.sw.games} games`
+      : s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
       : s.outside ? 'Sims running (started outside the app)'
       : j && j.missing ? `<span class="err" title="${esc((j.problems || []).join(', '))}">Last run: ${j.missing} of ${j.games} games couldn't be played (PC too busy?)</span>`
       : j ? `Last run ${esc(j.state)}` : '';
