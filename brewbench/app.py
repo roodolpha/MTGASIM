@@ -116,6 +116,10 @@ class App:
     def _on_closing(self):
         if self.quitting:
             return True
+        if self.tray is None:     # no tray (Mac): closing the window quits, like most Mac apps' last window
+            self.quitting = True
+            threading.Thread(target=self.quit, daemon=True).start()
+            return True
         self.window.hide()   # keep running in the tray
         if not self.told_about_tray and self.tray is not None:
             self.told_about_tray = True
@@ -184,6 +188,9 @@ class App:
 
     # tray
     def start_tray(self):
+        if sys.platform == "darwin":
+            # on macOS the tray and the window both need the main thread; the window wins
+            return
         try:
             import pystray
             from PIL import Image
@@ -239,7 +246,7 @@ def _log_to_file(cfg):
 def selftest():
     """Checks the frozen build has everything it needs. Exit code 0 = fine."""
     problems = []
-    for mod in ("webview", "pystray", "PIL.Image"):
+    for mod in ("webview", "PIL.Image") + (() if sys.platform == "darwin" else ("pystray",)):
         try:
             __import__(mod)
         except Exception as e:

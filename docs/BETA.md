@@ -11,6 +11,10 @@ and tracks your real Arena games. Everything runs on your PC.
    reads Arena's log file.
 4. Open Brewbench. The setup checklist downloads Java and Forge (about 350 MB, once).
 
+**Mac (experimental):** download **brewbench-mac.zip** from the same page, unzip, then right-click
+Brewbench > Open the first time (it isn't signed, so macOS asks). There's no menu-bar icon on Mac yet: closing
+the window quits, so leave it open while you play if you want games recorded.
+
 ## What to try
 
 - **Decks:** your Arena decks should appear on their own. Check the card counts and formats look right.
