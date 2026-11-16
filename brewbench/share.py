@@ -19,7 +19,7 @@ from collections import Counter
 from . import __version__, arena_log, cards as C, decks as D, runner
 from .optimiser import deck_hash
 
-DEFAULT_API = "https://api.brewbench.gg"   # replaced by the real address once the site is live
+DEFAULT_API = "https://brewbench-server.roododger.workers.dev"   # moves to api.brewbench.gg if the domain is bought
 
 
 def event_format(event: str):
