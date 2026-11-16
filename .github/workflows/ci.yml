@@ -6,7 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
         python: ["3.10", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -17,7 +17,7 @@ jobs:
       - run: python -m pip install pytest pyflakes
       - run: python -m pyflakes brewbench
         continue-on-error: true
-      - run: python -m pytest -q tests
+      - run: python -m pytest -q tests --ignore=tests/browser
   site:
     runs-on: ubuntu-latest
     steps:
@@ -26,3 +26,14 @@ jobs:
         with:
           node-version: 22
       - run: node --check site/app.js
+  pages:
+    # every page of the app and the website in a real browser: no script errors, key text present, fits a phone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pytest playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q tests/browser
