@@ -21,6 +21,8 @@ nav a{color:var(--text);text-decoration:none;font-weight:600;padding:10px 12px;b
 nav a:hover{background:var(--panel)}
 nav a[aria-current="page"]{color:var(--hot)}
 #job{margin-left:auto;font-size:13px;color:var(--dim)}
+.btn.stop{min-height:32px;padding:0 14px;font-size:13px;background:var(--loss);color:#1A0D07;margin-left:8px}
+#job{display:flex;align-items:center;gap:4px}
 .cta{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;background:var(--hot);color:#1A0D07;font-weight:700;text-decoration:none;white-space:nowrap}
 .cta:hover,.btn:hover{background:#FF8259}
 a:focus-visible,button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
@@ -146,12 +148,14 @@ async function runs() {
   if (!all.length) { $('#main').innerHTML = head + `<p class="dim" style="margin:0">Nothing simulated yet. Add a deck, then start a run and leave it going.</p></div>`; return; }
   const games = all.reduce((n, r) => n + ((r.summary || {}).games || 0), 0);
   const best = all.filter(r => (r.summary || {}).games >= 50).sort((x, y) => y.summary.win_rate - x.summary.win_rate)[0];
-  $('#main').innerHTML = head + `<div class="strip"><div><b>${all.length}</b><span>runs</span></div><div><b>${games.toLocaleString()}</b><span>games simmed</span></div>${best ? `<div><b class="sim">${pct(best.summary.win_rate)}</b><span>best: ${esc(best.label)}</span></div>` : ''}</div></div>
+  $('#main').innerHTML = head + `<div id="runbanner" class="panel" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--loss)" hidden><b>A sim is running.</b><span class="dim">It keeps your PC busy until it finishes. Games already played are kept.</span><button class="btn stop" style="margin-left:auto" id="bstop">Stop all sims</button></div><div class="strip"><div><b>${all.length}</b><span>runs</span></div><div><b>${games.toLocaleString()}</b><span>games simmed</span></div>${best ? `<div><b class="sim">${pct(best.summary.win_rate)}</b><span>best: ${esc(best.label)}</span></div>` : ''}</div></div>
   <div class="panel"><table><thead><tr><th>Deck</th><th>Format</th><th class="n">Win rate</th><th class="n">Games</th><th class="n">Opponents</th><th class="n">Date</th></tr></thead><tbody>
   ${all.map(r => { const s = r.summary || {}; const ci = s.ci95 && s.games ? `${pct(s.ci95[0])}–${pct(s.ci95[1])}` : '';
     return `<tr class="go" data-run="${esc(r.run)}" tabindex="0"><td><b>${esc(r.label)}</b></td><td class="dim">${esc(r.format)}</td>
     <td class="n"><b class="sim">${pct(s.win_rate)}</b>${ci ? `<span class="sub">${ci}</span>` : ''}</td><td class="n">${s.games || 0}</td><td class="n dim">${r.opponents.length}</td><td class="n dim">${new Date(r.started * 1000).toLocaleDateString()}</td></tr>`; }).join('')}
   </tbody></table></div>`;
+  const bs = $('#bstop'); if (bs) bs.onclick = () => stopAll(bs);
+  $('#runbanner').hidden = !simming().any;
   document.querySelectorAll('[data-run]').forEach(t => { t.onclick = () => show('run', t.dataset.run); t.onkeydown = e => { if (e.key === 'Enter') show('run', t.dataset.run); }; });
 }
 
@@ -243,7 +247,7 @@ async function newRun(pick) {
   const fit = () => { const d = DECKS.find(x => x.id === $('#rdeck').value); if (d && d.format) $('#rfmt').value = d.format; };
   $('#rdeck').onchange = fit; fit();
   $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
-  $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; };
+  $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; poll(); };
 }
 
 
@@ -339,13 +343,31 @@ async function shareBox() {
   };
 }
 
+async function stopAll(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Stopping…'; }
+  const r = await api('/api/stop', {});
+  if (btn) btn.textContent = r.ended ? 'Stopped' : 'Stopped';
+  setTimeout(poll, 500);
+  if (location.hash.startsWith('#runs') || location.hash === '#new') setTimeout(() => route(), 1500);
+}
+function simming() {
+  const j = STATUS.job, o = STATUS.outside || {};
+  const mine = j && (j.state === 'running' || j.state === 'stopping');
+  return {mine, j, outside: !mine && (o.games || o.drivers), any: mine || o.games || o.drivers};
+}
+let POLL;
 async function poll() {
+  clearTimeout(POLL);
   try {
     STATUS = await api('/api/status');
-    const j = STATUS.job;
-    $('#job').textContent = j && (j.state === 'running' || j.state === 'stopping') ? `${j.state === 'stopping' ? 'Stopping' : 'Running'} ${j.label}: ${j.done}/${j.games} games` : j ? `Last run ${j.state}` : 'AI: ' + STATUS.ai;
-  } catch (e) { $('#job').textContent = 'Dashboard server stopped'; }
-  setTimeout(poll, 2000);
+    const s = simming(), j = s.j;
+    const text = s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
+      : s.outside ? 'Sims running (started outside the app)' : j ? `Last run ${esc(j.state)}` : '';
+    $('#job').innerHTML = text + (s.any && !(j && j.state === 'stopping') ? ' <button class="btn stop" id="hstop">Stop sims</button>' : '');
+    const hs = $('#hstop'); if (hs) hs.onclick = () => stopAll(hs);
+    const banner = $('#runbanner'); if (banner) banner.hidden = !s.any;
+  } catch (e) { $('#job').textContent = 'Brewbench has stopped'; }
+  POLL = setTimeout(poll, 2000);
 }
 poll();
 Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; if (!route()) { if (st.ready) location.replace('/tracker'); else show('setup'); } });

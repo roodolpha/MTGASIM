@@ -58,6 +58,19 @@ class Jobs:
         return {k: v for k, v in j.items() if not k.startswith("_")} if j else None
 
 
+# sims running outside the app (command line, optimiser), checked in the background every few seconds
+_OUTSIDE = {"games": 0, "drivers": 0, "checked": 0}
+
+
+def _watch_outside(stop_after=None):
+    while True:
+        try:
+            _OUTSIDE.update(runner.find_sims(), checked=time.time())
+        except Exception:
+            pass
+        time.sleep(5)
+
+
 _SUMMARIES = {}   # results file -> (mtime, size, summary): big imported runs are only read once
 
 
@@ -219,7 +232,7 @@ def make_handler(cfg, jobs):
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],
-                                        "job": jobs.view()})
+                                        "job": jobs.view(), "outside": {k: _OUTSIDE[k] for k in ("games", "drivers")}})
             if path == "/api/runs":
                 return self._send(200, run_list(cfg))
             if path.startswith("/api/runs/"):
@@ -306,9 +319,11 @@ def make_handler(cfg, jobs):
                 except Exception as e:
                     return self._send(502, {"error": str(e)})
                 return self._send(200, {"ok": True})
-            if path == "/api/stop":
+            if path == "/api/stop":   # stops everything: the app's run and any started from the command line
                 jobs.stop()
-                return self._send(200, {"ok": True, "job": jobs.view()})
+                n = runner.kill_all_sims()
+                _OUTSIDE.update(games=0, drivers=0)
+                return self._send(200, {"ok": True, "job": jobs.view(), "ended": n})
             if path == "/api/decks/sync":
                 return self._send(200, arena_decks.sync(cfg, force=True))
             if path == "/api/decks/remove":
@@ -342,6 +357,7 @@ JOBS = None
 def serve(cfg, port=8780, open_browser=True, track=True):
     global JOBS
     jobs = JOBS = Jobs()
+    threading.Thread(target=_watch_outside, name="sim-watch", daemon=True).start()
     if track:
         from . import tracker
         tracker.start(cfg)

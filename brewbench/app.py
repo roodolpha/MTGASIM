@@ -147,6 +147,18 @@ class App:
             pass
         os._exit(0)   # the server and tracker threads are daemons; make sure nothing lingers
 
+    def stop_sims(self):
+        from . import runner
+        try:
+            if server.JOBS is not None:
+                server.JOBS.stop()
+            n = runner.kill_all_sims()
+            if self.tray is not None:
+                self.tray.notify("Stopped all sims. Games already played are kept." if n or server.JOBS
+                                 else "No sims were running.", "Brewbench")
+        except Exception:
+            pass
+
     # tray
     def start_tray(self):
         try:
@@ -157,6 +169,7 @@ class App:
             return
         menu = pystray.Menu(
             pystray.MenuItem("Open Brewbench", lambda: self.show(), default=True),
+            pystray.MenuItem("Stop all sims", lambda: self.stop_sims()),
             pystray.MenuItem("Start with Windows", lambda: set_startup(not startup_enabled()),
                              checked=lambda item: startup_enabled(), visible=sys.platform == "win32"),
             pystray.Menu.SEPARATOR,

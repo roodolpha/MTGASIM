@@ -51,3 +51,13 @@ def test_share_reads_tracker_history():
     assert m.match_id == "abc" and m.start == 1793830402324 and m.my_commanders == [93839]
     assert m.opp_commanders == {96873} and m.opp_seen[2] == 2 and m.my_deck == [5, 6, 6]
     assert share._from_tracker({"result": "Win"}) is None
+
+
+def test_sim_process_matching():
+    from brewbench import runner
+    assert runner._is_sim(r'"C:\jre\bin\java.exe" -Xmx2g -cp a.jar;b.jar brewbench.Sim brawl x.dck y.dck 10 o.jsonl')
+    assert not runner._is_sim("notepad brewbench.Sim.txt")
+    assert runner._is_driver('"C:\\Python\\python.exe" -m brewbench run Zimone -f brawl -n 500')
+    assert runner._is_driver("brewbench-cli.exe optimise Zimone -f brawl")
+    assert not runner._is_driver("py -3 -m brewbench serve")
+    assert not runner._is_driver('"C:\\Programs\\brewbench\\brewbench.exe" --background')

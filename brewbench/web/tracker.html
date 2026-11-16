@@ -376,6 +376,7 @@ input,select{border-radius:10px}
   <a class="brand" href="/" style="text-decoration:none"><span class="mlogo">brew<span>bench</span></span></a>
   <div class="sitenav" role="navigation" aria-label="Main"><a href="/tracker" aria-current="page">My games</a><a href="/#runs">Sims</a><a href="/#decks">Decks</a><a href="/#optimiser">Optimiser</a><a href="/#settings">Settings</a></div>
   <div class="side-foot" id="sub"></div>
+  <div id="simstat" hidden style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><span id="simtxt"></span><button id="simstop" style="all:unset;cursor:pointer;background:#FF8A5C;color:#1A0D07;font-weight:700;border-radius:999px;padding:6px 14px">Stop sims</button></div>
 </header>
 <div class="content">
   <section class="bighero">
@@ -2842,6 +2843,24 @@ setInterval(()=>{ const playing = [...document.querySelectorAll('video')].some(v
   if(!document.hidden && !playing && $('#tab-practice').classList.contains('hidden') ){
     try{ sessionStorage.setItem('scrollY', String(window.scrollY)); }catch(e){} location.reload(); } }, 30000);
 try{ const y = +sessionStorage.getItem('scrollY'); sessionStorage.removeItem('scrollY'); if(y) setTimeout(()=>window.scrollTo(0, y), 50); }catch(e){}
+
+// sims running? show a Stop button up top (works for runs started anywhere)
+(function simWatch(){
+  const tick = async () => {
+    try {
+      const st = await (await fetch('/api/status')).json(), j = st.job, o = st.outside || {};
+      const mine = j && (j.state === 'running' || j.state === 'stopping');
+      const any = mine || o.games || o.drivers;
+      $('#simstat').hidden = !any; $('#simstat').style.display = any ? 'flex' : 'none';
+      $('#simtxt').textContent = mine ? `Simming ${j.label}: ${j.done}/${j.games}` : any ? 'Sims running' : '';
+    } catch(e) {}
+    setTimeout(tick, 3000);
+  };
+  $('#simstop').onclick = async () => { $('#simstop').textContent = 'Stopping…';
+    await fetch('/api/stop', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    $('#simstop').textContent = 'Stop sims'; };
+  tick();
+})();
 </script>
 </body>
 </html>

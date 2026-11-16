@@ -172,3 +172,72 @@ def load_results(path_or_dir, run=None, label=None):
                 continue
             out.append(g)
     return out
+
+
+# ------------------------------------------------------------ every sim on this PC, whoever started it
+# Runs started from the app are stopped through their Run object. Runs started from the command line (or the
+# optimiser) are separate programs, so these find them by their command line: the Forge harness class, and the
+# brewbench commands that keep launching new batches.
+_DRIVER_MARKERS = (" run ", " compare ", " optimise ", " optimize ")
+
+
+def _procs():
+    """[(pid, command line)] for every process, best effort; [] if it can't be read."""
+    out = []
+    try:
+        if os.name == "nt":
+            ps = ("Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }")
+            r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True,
+                               text=True, timeout=20, creationflags=0x08000000)
+            lines = r.stdout.splitlines()
+        else:
+            r = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, timeout=10)
+            lines = [l.strip().replace(" ", "\t", 1) for l in r.stdout.splitlines()]
+        for l in lines:
+            pid, _, cmd = l.partition("\t")
+            if pid.strip().isdigit() and cmd:
+                out.append((int(pid), cmd))
+    except Exception:
+        pass
+    return out
+
+
+def _is_sim(cmd):
+    """A Forge game process: java running the Brewbench harness class."""
+    import re
+    return "java" in cmd.lower() and re.search(r"\s(brewbench|mtgasim)\.Sim(\s|$)", cmd) is not None
+
+
+def _is_driver(cmd):
+    c = " " + cmd.replace('"', " ") + " "
+    return (("brewbench" in c or "mtgasim" in c) and any(m in c for m in _DRIVER_MARKERS)
+            and " serve " not in c and " app " not in c)
+
+
+def find_sims():
+    """{'games': n Forge processes, 'drivers': n brewbench run/compare/optimise commands} running right now."""
+    me = os.getpid()
+    procs = [(p, c) for p, c in _procs() if p != me]
+    return {"games": sum(1 for _, c in procs if _is_sim(c)),
+            "drivers": sum(1 for _, c in procs if _is_driver(c))}
+
+
+def kill_all_sims():
+    """Stops every Brewbench sim on this PC: the commands that launch batches first (so nothing new starts),
+    then the Forge games. Returns how many processes were ended."""
+    me = os.getpid()
+    procs = [(p, c) for p, c in _procs() if p != me]
+    targets = [p for p, c in procs if _is_driver(c)] + [p for p, c in procs if _is_sim(c)]
+    n = 0
+    for pid in targets:
+        try:
+            if os.name == "nt":
+                r = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
+                                   creationflags=0x08000000)
+                n += r.returncode == 0
+            else:
+                os.kill(pid, 9)
+                n += 1
+        except OSError:
+            pass
+    return n
