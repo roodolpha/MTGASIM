@@ -7,66 +7,98 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0F0F10;--panel:#18181B;--line:#2A2A2F;--text:#F2EEE6;--dim:#A7A29A;--hot:#FF6B3D;--win:#5FB8FF;--loss:#FF8A5C;
+:root{--bg:#0F0F10;--panel:#18181B;--line:#2A2A2F;--text:#F2EEE6;--dim:#A7A29A;--hot:#FF6B3D;--win:#5FB8FF;--sim:#7CC4FF;--loss:#FF8A5C;
 --W:#F4EBD0;--U:#3D8BE0;--B:#8E8A86;--R:#E5533A;--G:#4CA562}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 a{color:var(--hot)}
 h1,h2,h3,.big{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;padding:14px 24px;border-bottom:1px solid var(--line)}
-.logo{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;letter-spacing:-.02em}
+header{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:10px 28px;padding:10px max(24px,calc((100vw - 1280px)/2));min-height:68px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px)}
+.logo{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em;color:var(--text);text-decoration:none}
 .logo span{color:var(--hot)}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{min-height:44px;padding:0 14px;border:0;border-radius:8px;background:none;color:var(--dim);font:600 15px system-ui,sans-serif;cursor:pointer}
-nav button[aria-current="page"]{background:var(--panel);color:var(--text)}
-#job{margin-left:auto;font-size:14px;color:var(--dim)}
-main{max-width:1200px;margin:0 auto;padding:28px 24px 64px}
-.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
-.card{background:var(--panel);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+nav a{color:var(--text);text-decoration:none;font-weight:600;padding:10px 12px;border-radius:999px;font-size:15px}
+nav a:hover{background:var(--panel)}
+nav a[aria-current="page"]{color:var(--hot)}
+#job{margin-left:auto;font-size:13px;color:var(--dim)}
+.cta{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;background:var(--hot);color:#1A0D07;font-weight:700;text-decoration:none;white-space:nowrap}
+.cta:hover,.btn:hover{background:#FF8259}
+a:focus-visible,button:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+main{max-width:1328px;margin:0 auto;padding:4px 24px 64px;display:flex;flex-direction:column;gap:40px}
+main > *{margin:0}
+.secthead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1.page,.secthead h2{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px}
+.card{background:var(--panel);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
 .card button.open{all:unset;cursor:pointer;display:flex;flex-direction:column;height:100%}
-.card button.open:focus-visible{outline:2px solid var(--hot);outline-offset:-2px}
-.art{height:120px;background:#222 center/cover no-repeat;position:relative}
-.art .tag{position:absolute;left:10px;bottom:10px;background:rgba(15,15,16,.85);padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600}
-.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:4px}
-.wr{font-family:"Bricolage Grotesque",sans-serif;font-size:34px;font-weight:800;line-height:1}
+.card:hover{background:#1E1E22}
+.art{height:130px;background:#222226 center 30%/cover no-repeat;position:relative}
+.art .tag,.art .pos{position:absolute;left:10px;top:10px;background:rgba(15,15,16,.85);padding:2px 9px;border-radius:8px;font-size:13px;font-weight:700}
+.art .pos{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:15px}
+.art .tag.r{left:auto;right:10px}
+.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nums{display:flex;gap:18px;font-variant-numeric:tabular-nums}
+.nums small{display:block;font-size:12px;color:var(--dim)}
+.nums b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;line-height:1.1}
+.sim{color:var(--sim)}
+.wr{font-family:"Bricolage Grotesque",sans-serif;font-size:40px;font-weight:800;line-height:1}
 .dim{color:var(--dim)}
 .pips{display:inline-flex;gap:3px;vertical-align:-1px}
 .pip{width:11px;height:11px;border-radius:50%;display:inline-block}
 table{width:100%;border-collapse:collapse}
-th{font-size:12px;color:var(--dim);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
-td{padding:9px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font-size:12px;color:var(--dim);text-align:left;font-weight:600;padding:6px 8px}
+td{padding:10px 8px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
 td.n,th.n{text-align:right}
 .bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:80px}
-.bar i{display:block;height:100%;background:var(--win)}
+.bar i{display:block;height:100%;background:var(--sim)}
 .bar i.bad{background:var(--loss)}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:28px;margin-top:24px}
-.panel{background:var(--panel);border-radius:12px;padding:16px 18px}
-.btn{min-height:44px;padding:0 18px;border:0;border-radius:8px;background:var(--hot);color:#1A0D07;font:700 15px system-ui,sans-serif;cursor:pointer}
-.btn.ghost{background:none;border:1px solid var(--line);color:var(--text)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:24px}
+.panel{background:var(--panel);border-radius:16px;padding:20px 22px;min-width:0}
+.panel h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.btn{min-height:44px;padding:0 20px;border:0;border-radius:999px;background:var(--hot);color:#1A0D07;font:700 15px system-ui,sans-serif;cursor:pointer}
+.btn.ghost{background:none;border:1px solid rgba(242,238,230,.35);color:var(--text)}
+.btn.ghost:hover{background:#222226}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--dim)}
-input,select,textarea{background:#0B0B0C;border:1px solid var(--line);border-radius:8px;color:var(--text);font:15px system-ui,sans-serif;padding:10px 12px;min-height:44px}
+input,select,textarea{background:#0B0B0C;border:1px solid var(--line);border-radius:10px;color:var(--text);font:15px system-ui,sans-serif;padding:10px 12px;min-height:44px}
 textarea{min-height:200px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
 .form{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
-.empty{padding:40px;text-align:center;color:var(--dim);background:var(--panel);border-radius:12px}
-.hero{display:flex;gap:20px;align-items:stretch;flex-wrap:wrap;margin-bottom:8px}
-.hero .art{height:auto;min-height:160px;flex:1 1 380px;border-radius:12px}
-.hero .facts{flex:1 1 320px;display:flex;flex-direction:column;justify-content:center;gap:6px}
-.back{all:unset;cursor:pointer;color:var(--dim);font-size:14px;margin-bottom:14px;display:inline-block;min-height:44px;line-height:44px}
+.empty{padding:48px;text-align:center;color:var(--dim);background:var(--panel);border-radius:16px}
+.empty h2{color:var(--text);font-size:28px;font-weight:800;margin-bottom:6px}
+.hero{position:relative;border-radius:18px;overflow:hidden;min-height:420px;display:flex;align-items:flex-end;background:#1B1B1E center 30%/cover no-repeat}
+.hero.short{min-height:300px}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(15,15,16,.96) 18%,rgba(15,15,16,.55) 55%,rgba(15,15,16,.1))}
+.hero .in{position:relative;padding:28px 32px 30px;display:flex;flex-direction:column;gap:14px;width:100%}
+.kick{font-weight:700;color:#FF8F66;font-size:15px}
+.hero h1{font-size:72px;font-weight:800;line-height:.95;letter-spacing:-.03em;overflow-wrap:anywhere}
+.hstats{display:flex;flex-wrap:wrap;gap:12px 36px;align-items:baseline}
+.hstats b{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:40px;letter-spacing:-.02em}
+.hstats span,.hero p{color:#C9C3B9}
+.hero p{margin:0;max-width:720px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(242,238,230,.35);background:rgba(15,15,16,.5);color:var(--text);font:600 15px system-ui,sans-serif;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:700}
+.back{all:unset;cursor:pointer;color:var(--text);font-weight:600;font-size:14px;display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:999px;background:rgba(15,15,16,.6);border:1px solid rgba(242,238,230,.35);align-self:flex-start}
+.check{display:flex;gap:16px;align-items:flex-start}
+.check .mark{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;background:#2A2A2F}
+.check .mark.ok{background:var(--sim);color:#0F0F10}
+.check p{margin:0 0 10px}
+@media (max-width:760px){.hero h1{font-size:44px}.hstats b{font-size:30px}.hero .in{padding:20px}#job{display:none}}
 .err{color:var(--loss)}
 </style>
 </head>
 <body>
 <header>
-<div class="logo">brew<span>bench</span></div>
-<nav aria-label="Sections">
-<a href="/tracker" style="min-height:44px;display:inline-flex;align-items:center;padding:0 14px;color:var(--text);font-weight:600;text-decoration:none">My games</a>
-<button data-view="runs">Runs</button>
-<button data-view="decks">Decks</button>
-<button data-view="optimiser">Optimiser</button>
-<button data-view="new">New run</button>
-<button data-view="settings">Settings</button>
+<a class="logo" href="#runs">brew<span>bench</span></a>
+<nav aria-label="Main">
+<a href="/tracker">My games</a>
+<a href="#runs" data-view="runs">Sim runs</a>
+<a href="#decks" data-view="decks">Decks</a>
+<a href="#optimiser" data-view="optimiser">Optimiser</a>
+<a href="#settings" data-view="settings">Settings</a>
 </nav>
 <div id="job" aria-live="polite"></div>
+<a class="cta" href="#new">Run the sim</a>
 </header>
 <main id="main"></main>
 <script>
@@ -77,11 +109,23 @@ const art = name => name ? 'https://api.scryfall.com/cards/named?format=image&ve
 const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {}).then(r => r.json());
 let STATUS = {formats: []}, DECKS = [];
 
+const VIEWS = () => ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup});
 function show(view, arg) {
-  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.view === view ? 'page' : 'false'));
-  ({runs, decks, optimiser, new: newRun, run: runPage, settings, setup})[view](arg);
+  const h = view === 'run' ? '#run/' + encodeURIComponent(arg) : '#' + view;
+  if (location.hash !== h) history.replaceState(null, '', h);
+  const tab = view === 'run' ? 'runs' : view;
+  document.querySelectorAll('nav a[data-view]').forEach(a => a.dataset.view === tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+  window.scrollTo(0, 0);
+  VIEWS()[view](arg);
 }
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view));
+function route() {
+  const [v, a] = location.hash.slice(1).split('/');
+  if (v && VIEWS()[v]) { show(v, a && decodeURIComponent(a)); return true; }
+  return false;
+}
+window.addEventListener('hashchange', route);
+const hero = (img, inner, cls = '') => `<section class="hero ${cls}" style="background-image:url('${esc(img)}')"><div class="in">${inner}</div></section>`;
+let FMT = '';
 
 function deckArt(d) {
   const deck = DECKS.find(x => x.id === (d || '').replace(/\.dck$/, ''));
@@ -91,36 +135,49 @@ function deckArt(d) {
 }
 
 async function runs() {
-  const list = await api('/api/runs');
-  if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>Nothing simulated yet</h2><p>Add a deck, fill a gauntlet, then hit <b>New run</b>.</p></div>'; return; }
-  $('#main').innerHTML = '<h1 style="font-size:30px;margin-bottom:16px">Your runs</h1><div class="row" id="cards"></div>';
-  $('#cards').innerHTML = list.map(r => {
+  const all = await api('/api/runs');
+  if (!all.length) { $('#main').innerHTML = hero('', `<div class="kick">Sim runs</div><h1>Nothing simulated yet</h1><p>Add a deck, fill a gauntlet, then hit Run the sim. Leave it overnight and you'll have a real answer by breakfast.</p><div><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="#new">Run the sim</a></div>`, 'short'); return; }
+  const fmts = [...new Set(all.map(r => r.format))];
+  if (FMT && !fmts.includes(FMT)) FMT = '';
+  const list = all.filter(r => !FMT || r.format === FMT);
+  const top = list[0], s = top.summary || {}, deck = (top.deck || '').split(/[\\/]/).pop();
+  const tabs = fmts.length > 1 ? `<div class="tabs" role="tablist" aria-label="Format">${['', ...fmts].map(f => `<button role="tab" aria-selected="${f === FMT}" data-fmt="${esc(f)}">${f ? esc(f) : 'All'}</button>`).join('')}</div>` : '';
+  $('#main').innerHTML = hero(art(deckArt(deck)), `${tabs}
+    <div class="kick">Latest run · ${esc(top.format)} · ${new Date(top.started * 1000).toLocaleDateString()}</div>
+    <h1>${esc(top.label)}</h1>
+    <div class="hstats"><div><b class="sim">${pct(s.win_rate)}</b> <span>when the bots play it</span></div>
+    <div><b>${s.games || 0}</b> <span>games</span></div>
+    <div><span>vs ${top.opponents.length} deck${top.opponents.length === 1 ? '' : 's'}</span></div></div>
+    <div><button class="btn" data-run="${esc(top.run)}">See the matchups</button></div>`) +
+    `<section><div class="secthead"><h2>Your runs</h2><span class="dim">${list.length} run${list.length === 1 ? '' : 's'}</span></div><div class="row" id="cards"></div></section>`;
+  $('#cards').innerHTML = list.map((r, i) => {
     const s = r.summary || {}; const deck = (r.deck || '').split(/[\\/]/).pop();
     return `<div class="card"><button class="open" data-run="${esc(r.run)}">
-      <div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"><span class="tag">${esc(r.format)}</span></div>
-      <div class="body"><div class="dim" style="font-size:13px">${esc(r.label)}</div>
-      <div class="wr">${pct(s.win_rate)}</div>
-      <div class="dim" style="font-size:13px">${s.games || 0} games · vs ${r.opponents.length} deck${r.opponents.length === 1 ? '' : 's'} · ${new Date(r.started * 1000).toLocaleDateString()}</div></div>
+      <div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"><span class="pos">#${i + 1}</span><span class="tag r">${esc(r.format)}</span></div>
+      <div class="body"><div class="name">${esc(r.label)}</div>
+      <div class="nums"><div><small>Sim win rate</small><b class="sim">${pct(s.win_rate)}</b></div><div><small>Games</small><b>${s.games || 0}</b></div></div>
+      <div class="dim" style="font-size:13px">vs ${r.opponents.length} deck${r.opponents.length === 1 ? '' : 's'} · ${new Date(r.started * 1000).toLocaleDateString()}</div></div>
     </button></div>`; }).join('');
   document.querySelectorAll('[data-run]').forEach(b => b.onclick = () => show('run', b.dataset.run));
+  document.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => { FMT = b.dataset.fmt; runs(); });
 }
 
 async function runPage(id) {
   const r = await api('/api/runs/' + encodeURIComponent(id));
   const s = r.summary; const deck = (r.deck || '').split(/[\\/]/).pop();
   const lo = s.ci95[0], hi = s.ci95[1];
-  $('#main').innerHTML = `<button class="back">← all runs</button>
-  <div class="hero"><div class="art" style="background-image:url('${esc(art(deckArt(deck)))}')"></div>
-  <div class="facts"><div class="dim">${esc(r.label)} · ${esc(r.format)} · AI ${esc(r.ai)}</div>
-  <div class="wr" style="font-size:64px">${pct(s.win_rate)}</div>
-  <div>${s.wins}–${s.losses}${s.draws ? '–' + s.draws : ''} over ${s.games} games. The real number's probably somewhere between ${pct(lo)} and ${pct(hi)}.</div>
-  <div class="dim">On the play ${pct(s.on_play)} · on the draw ${pct(s.on_draw)}${s.avg_turns ? ' · games last about ' + Math.round(s.avg_turns / 2) + ' turns each' : ''}</div></div></div>
+  $('#main').innerHTML = hero(art(deckArt(deck)), `<button class="back">← All runs</button>
+  <div class="kick">${esc(r.format)} · AI ${esc(r.ai)}</div>
+  <h1>${esc(r.label)}</h1>
+  <div class="hstats"><div><b class="sim">${pct(s.win_rate)}</b> <span>when the bots play it</span></div>
+  <div><b>${s.wins}–${s.losses}${s.draws ? '–' + s.draws : ''}</b> <span>over ${s.games} games</span></div></div>
+  <p>The real number's probably somewhere between ${pct(lo)} and ${pct(hi)}. On the play ${pct(s.on_play)}, on the draw ${pct(s.on_draw)}${s.avg_turns ? ', games last about ' + Math.round(s.avg_turns / 2) + ' turns each' : ''}.</p>`) + `
   <div class="grid2">
-  <div class="panel"><h2 style="font-size:20px;margin-bottom:8px">Matchups, worst first</h2>
+  <div class="panel"><h2 style="margin-bottom:8px">Matchups, worst first</h2>
   <table><thead><tr><th>Opponent</th><th class="n">Won</th><th></th><th class="n">Games</th></tr></thead><tbody>
   ${r.opponents.map(o => `<tr><td>${esc(o.opponent)}</td><td class="n">${pct(o.win_rate)}</td><td><div class="bar"><i class="${o.win_rate < .5 ? 'bad' : ''}" style="width:${Math.round(100 * (o.win_rate || 0))}%"></i></div></td><td class="n dim">${o.games}</td></tr>`).join('')}
   </tbody></table></div>
-  <div class="panel"><h2 style="font-size:20px;margin-bottom:4px">When this card hit the table…</h2>
+  <div class="panel"><h2 style="margin-bottom:4px">When this card hit the table…</h2>
   <p class="dim" style="margin:0 0 8px;font-size:13px">Win rate when the card was on the battlefield vs when it wasn't. It's a hint for what to test, not proof: cheap cards land more often.</p>
   <table><thead><tr><th>Card</th><th class="n">Seen</th><th class="n">With</th><th class="n">Without</th></tr></thead><tbody>
   ${r.cards.slice(0, 12).map(c => `<tr><td>${esc(c.card)}</td><td class="n dim">${c.games_seen}</td><td class="n">${pct(c.win_seen)}</td><td class="n dim">${pct(c.win_not_seen)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">Needs more games.</td></tr>'}
@@ -131,14 +188,16 @@ async function runPage(id) {
 async function decks() {
   DECKS = await api('/api/decks');
   const g = await api('/api/gauntlets');
-  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:16px">Your decks</h1><div class="row">${DECKS.map(d => `
+  const d0 = DECKS[0];
+  $('#main').innerHTML = hero(d0 ? art(deckArt(d0.id)) : '', `<div class="kick">Your decks</div><h1>${DECKS.length} deck${DECKS.length === 1 ? '' : 's'} on the bench</h1><p>Paste a list from Arena's Export button below, then send it through the sim.</p>`, 'short') + `
+  <section><div class="row">${DECKS.map(d => `
     <div class="card"><div class="art" style="background-image:url('${esc(art(deckArt(d.id)))}')"><span class="tag">${d.cards} cards</span></div>
-    <div class="body"><h3 style="font-size:18px">${esc(d.name)}</h3><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || 'no commander')}</div></div></div>`).join('') || '<div class="empty">No decks yet. Paste one below.</div>'}</div>
-  <div class="grid2"><div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Add a deck</h2>
+    <div class="body"><div class="name">${esc(d.name)}</div><div class="dim" style="font-size:13px">${esc((d.commanders || []).join(', ') || 'no commander')}</div></div></div>`).join('') || '<div class="empty">No decks yet. Paste one below.</div>'}</div></section>
+  <div class="grid2"><div class="panel"><h2 style="margin-bottom:10px">Add a deck</h2>
   <div style="display:flex;flex-direction:column;gap:12px"><label>Name<input id="dname" placeholder="e.g. Izzet Prowess"></label>
   <label>Paste from Arena (Export button)<textarea id="dlist" placeholder="Deck&#10;4 Opt (XLN) 65&#10;..."></textarea></label>
   <div><button class="btn" id="dsave">Save deck</button> <span id="dmsg" class="dim"></span></div></div></div>
-  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Gauntlets</h2>
+  <div class="panel"><h2 style="margin-bottom:10px">Gauntlets</h2>
   ${Object.entries(g).map(([k, v]) => `<p style="margin:0 0 8px"><b>${esc(k)}</b> <span class="dim">${v.length ? esc(v.join(', ')) : 'empty'}</span></p>`).join('')}
   <p class="dim" style="font-size:13px;margin:12px 0 0">Add opponents from the command line: <code>brewbench gauntlet add standard decks_folder</code></p></div></div>`;
   $('#dsave').onclick = async () => {
@@ -151,7 +210,9 @@ async function decks() {
 async function optimiser() {
   const list = await api('/api/optimiser');
   if (!list.length) { $('#main').innerHTML = '<div class="empty"><h2>No optimiser runs yet</h2><p>Start one from the command line: <code>brewbench optimise "My Deck" -f standard --pool candidates.txt</code></p></div>'; return; }
-  $('#main').innerHTML = list.map(o => `<div class="panel" style="margin-bottom:20px"><h2 style="font-size:24px">${esc(o.deck)}</h2>
+  $('#main').innerHTML = hero(art(deckArt(list[0].deck)), `<div class="kick">Optimiser</div><h1>${esc(list[0].deck)}</h1>
+  <div class="hstats"><div><b class="sim">${list[0].accepted.length}</b> <span>swap${list[0].accepted.length === 1 ? '' : 's'} kept</span></div><div><b>${list[0].tested}</b> <span>tested</span></div></div>
+  <p>Every swap has to win a screen, a bigger confirm, then a hold-out against decks it never trained on. Most don't make it, which is the point.</p>`, 'short') + list.map(o => `<div class="panel"><h2>${esc(o.deck)}</h2>
   <p class="dim" style="margin:4px 0 12px">${o.accepted.length} swap${o.accepted.length === 1 ? '' : 's'} kept out of ${o.tested} tested</p>
   <table><thead><tr><th>Swap</th><th>Got to</th><th class="n">Difference</th><th>Kept?</th></tr></thead><tbody>
   ${o.tried.slice().reverse().map(t => { const st = t.holdout ? 'hold-out' : t.confirm ? 'confirm' : 'screen'; const d = (t.holdout || t.confirm || t.screen || {}).diff;
@@ -161,7 +222,7 @@ async function optimiser() {
 
 async function newRun() {
   DECKS = await api('/api/decks');
-  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:6px">Run it</h1><p class="dim" style="margin:0 0 18px">Plays your deck against that format's gauntlet. Leave it going: more games, tighter numbers.</p>
+  $('#main').innerHTML = hero(DECKS[0] ? art(deckArt(DECKS[0].id)) : '', `<div class="kick">New run</div><h1>Play it 1,000 times</h1><p>Plays your deck against that format's gauntlet on your own PC. Leave it going: more games, tighter numbers.</p>`, 'short') + `
   <div class="panel"><div class="form">
   <label>Deck<select id="rdeck">${DECKS.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label>
   <label>Format<select id="rfmt">${STATUS.formats.map(f => `<option value="${esc(f.key)}">${esc(f.name)}</option>`).join('')}</select></label>
@@ -176,15 +237,14 @@ async function newRun() {
 const kb = n => n > 1e6 ? (n / 1e6).toFixed(0) + ' MB' : Math.round(n / 1e3) + ' KB';
 async function setup() {
   const st = await api('/api/setup');
-  const row = (ok, title, body) => `<div class="panel" style="display:flex;gap:16px;align-items:flex-start;margin-bottom:12px">
-    <div class="big" style="font-size:26px;color:${ok ? 'var(--win)' : 'var(--hot)'}" aria-hidden="true">${ok ? '✓' : '•'}</div>
-    <div style="flex:1"><h3 style="font-size:18px;margin-bottom:4px">${title}</h3>${body}</div></div>`;
+  let n = 0;
+  const row = (ok, title, body) => `<div class="panel check"><div class="mark ${ok ? 'ok' : ''}" aria-hidden="true">${ok ? '✓' : ++n}</div>
+    <div style="flex:1"><h3 style="font-size:20px;margin-bottom:6px">${title}</h3>${body}</div></div>`;
   const job = n => { const j = (st.jobs || {})[n]; if (!j) return '';
     if (j.state === 'running') return `<p class="dim">${j.unpacking ? 'Unpacking…' : `Downloading… ${kb(j.done)}${j.total ? ' of ' + kb(j.total) : ''}`}</p>`;
     if (j.state === 'error') return `<p class="err">That failed: ${esc(j.error)}</p>`;
     return j.warning ? `<p class="dim">${esc(j.warning)}</p>` : ''; };
-  $('#main').innerHTML = `<h1 style="font-size:34px;margin-bottom:6px">Let's get you set up</h1>
-  <p class="dim" style="margin:0 0 18px">Three things and you're simming. Everything downloads into ${esc(st.home)}.</p>
+  $('#main').innerHTML = hero(art('Zimone, Paradox Sculptor'), `<div class="kick">Setup</div><h1>Let's get you simming</h1><p>A few things and you're away. Everything downloads into ${esc(st.home)}.</p>`, 'short') + `<div style="display:flex;flex-direction:column;gap:12px">
   ${row(st.java.ok, 'Java', st.java.ok ? `<p class="dim">Java ${st.java.version} found.</p>` : `<p>The simulator runs on Java 17. About 45 MB.</p><button class="btn" data-dl="java">Download Java</button>${job('java')}`)}
   ${row(st.forge.ok, 'Forge (the rules engine)', st.forge.ok ? `<p class="dim">Forge ${esc(st.forge.version)} ready.</p>` : `<p>Forge is the open-source Magic engine whose AI plays the games. About 300 MB, then a minute or two to unpack.</p>
      <button class="btn" data-dl="forge">Download Forge</button>
@@ -194,7 +254,7 @@ async function setup() {
      ? (st.arena_log.detailed === false ? `<p>Found Arena's log, but Detailed Logs looks off. In Arena: <b>Options → Account → Detailed Logs (Plugin Support)</b>, then restart Arena.</p>` : `<p class="dim">Reading ${esc(st.arena_log.path)}. Your games get recorded automatically.</p>`)
      : `<p>Not found yet. Start Arena once, and turn on <b>Options → Account → Detailed Logs (Plugin Support)</b>. Only needed for game tracking and importing your decks.</p>`)}
   ${row(st.decks > 0, 'A deck', st.decks ? `<p class="dim">${st.decks} deck${st.decks === 1 ? '' : 's'} saved.</p>` : `<p>Paste one on the <a href="#" id="godecks">Decks</a> page (Arena's Export button copies it).</p>`)}
-  ${st.ready ? '<button class="btn" id="done" style="margin-top:8px">All set, take me in</button>' : ''}`;
+  </div>${st.ready ? '<div><button class="btn" id="done">All set, take me in</button></div>' : ''}`;
   document.querySelectorAll('[data-dl]').forEach(b => b.onclick = async () => { await api('/api/setup/download', {what: b.dataset.dl}); setTimeout(setup, 800); });
   const fu = $('#fuse'); if (fu) fu.onclick = async () => { const r = await api('/api/setup/use', {forge_dir: $('#fdir').value}); if (r.error) alert(r.error); setup(); };
   const gd = $('#godecks'); if (gd) gd.onclick = e => { e.preventDefault(); show('decks'); };
@@ -204,14 +264,14 @@ async function setup() {
 
 async function settings() {
   const [s, st, up] = await Promise.all([api('/api/settings'), api('/api/setup'), api('/api/update')]);
-  $('#main').innerHTML = `<h1 style="font-size:30px;margin-bottom:16px">Settings</h1>
-  <div class="grid2" style="margin-top:0">
-  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">Simulator</h2><div class="form">
+  $('#main').innerHTML = `<h1 class="page">Settings</h1>
+  <div class="grid2">
+  <div class="panel"><h2 style="margin-bottom:10px">Simulator</h2><div class="form">
    <label>Forge AI<select id="sai">${['Default','Cautious','Reckless','Experimental','Hard','Hardest'].map(a => `<option ${a === (s.ai_profile || 'Default') ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
    <label>Games at once<input id="sinst" type="number" min="1" max="32" value="${esc(s.instances || '')}" placeholder="auto" style="width:110px"></label>
    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="sedh" ${s.edhrec ? 'checked' : ''} style="min-height:auto"> Use EDHREC lists for Brawl opponents</label>
    <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
-  <div class="panel"><h2 style="font-size:20px;margin-bottom:10px">About</h2>
+  <div class="panel"><h2 style="margin-bottom:10px">About</h2>
    <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
    <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out.</b> <a href="${esc(up.url)}">Get it</a>` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'}</p>
    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="/api/diagnostics" style="display:inline-flex;align-items:center;text-decoration:none">Download diagnostics</a>
@@ -230,8 +290,8 @@ async function poll() {
   setTimeout(poll, 2000);
 }
 poll();
-Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; show(st.ready ? 'runs' : 'setup'); });
-api('/api/update').then(u => { if (u.newer) { const b = document.createElement('a'); b.href = u.url; b.textContent = 'Update ' + u.latest + ' available'; b.style.cssText = 'color:var(--hot);font-weight:700;margin-left:12px'; $('#job').after(b); } });
+Promise.all([api('/api/decks'), api('/api/setup')]).then(([d, st]) => { DECKS = d; if (!route()) show(st.ready ? 'runs' : 'setup'); });
+api('/api/update').then(u => { if (u.newer) { const b = document.createElement('a'); b.href = u.url; b.textContent = 'Update ' + u.latest + ' available'; b.style.cssText = 'color:var(--hot);font-weight:700'; $('#job').after(b); } });
 </script>
 </body>
 </html>
