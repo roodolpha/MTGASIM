@@ -18,13 +18,25 @@ BATCH = 10            # games per Java start-up
 GAME_TIMEOUT = 180    # seconds before a stuck game counts as a draw
 
 
-def plan(opponents, games, batch=BATCH):
-    """[(opponent, n_games)] covering `games` games, round-robin over the opponents."""
+def plan(opponents, games, batch=BATCH, weights=None):
+    """[(opponent, n_games)] covering `games` games. Even across opponents, or in proportion to `weights`
+    (e.g. how often you face each one), with every opponent getting at least one game."""
     if not opponents:
         return []
     per = [0] * len(opponents)
-    for i in range(games):
-        per[i % len(opponents)] += 1
+    w = [max(0.0, float(x or 0)) for x in (weights or [])]
+    if len(w) == len(opponents) and sum(w) > 0 and games >= len(opponents):
+        per = [1] * len(opponents)                       # everyone plays at least once
+        left, tot = games - len(opponents), sum(w)
+        shares = [left * x / tot for x in w]
+        for i, sh in enumerate(shares):
+            per[i] += int(sh)
+        rest = games - sum(per)                          # hand out the remainder by largest fraction
+        for i in sorted(range(len(shares)), key=lambda i: shares[i] - int(shares[i]), reverse=True)[:rest]:
+            per[i] += 1
+    else:
+        for i in range(games):
+            per[i % len(opponents)] += 1
     queues = []
     for opp, n in zip(opponents, per):
         q = []
@@ -53,6 +65,7 @@ class Run:
         self.games = games
         self.instances = instances or cfg.get("instances") or max(1, (os.cpu_count() or 2) // 2)
         self.seed = seed
+        self.weights = None      # optional: games per opponent in proportion to these (see plan)
         self.id = time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         self.label = label or self.deck.stem
         self.out_dir = Path(out_dir or cfg.results_dir)
@@ -138,7 +151,7 @@ class Run:
         forge_dir = self.cfg.forge_dir
         java = forge.find_java(forge_dir, self.cfg.get("java"))
         forge.prepare(forge_dir, self.cfg.get("ai_profile", "Default"))
-        jobs = plan(self.opponents, self.games)
+        jobs = plan(self.opponents, self.games, weights=self.weights)
         self.log(f"{self.games} games of {self.fmt.name}: {self.deck.stem} vs {len(self.opponents)} "
                  f"opponent deck(s), {self.instances} at a time")
         meta = {"run": self.id, "label": self.label, "deck": str(self.deck), "format": self.fmt.key,

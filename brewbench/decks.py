@@ -29,6 +29,7 @@ class Deck:
     side: Counter = field(default_factory=Counter)
     format: str = ""       # Brewbench format key, when known (decks imported from Arena)
     arena_id: str = ""     # Arena's DeckId, so a re-import updates the same file
+    weight: float = 0      # opponents: how often it's faced (times faced, or meta games); 0 = unknown
 
     @property
     def size(self) -> int:
@@ -49,6 +50,8 @@ class Deck:
             out.append(f"Format={self.format}")
         if self.arena_id:
             out.append(f"ArenaId={self.arena_id}")
+        if self.weight:
+            out.append(f"Weight={self.weight:g}")
         if self.commanders:
             out.append("[Commander]")
             out += [f"1 {c}" for c in self.commanders]
@@ -129,6 +132,11 @@ def read_dck(path) -> Deck:
                 deck.format = v.strip()
             elif k == "arenaid":
                 deck.arena_id = v.strip()
+            elif k == "weight":
+                try:
+                    deck.weight = float(v)
+                except ValueError:
+                    pass
             continue
         m = re.match(r"^(\d+)\s+(.+?)(?:\|.*)?$", line)
         if not m:

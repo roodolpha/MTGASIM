@@ -272,8 +272,8 @@ async function opponents() {
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-width:640px"><label>Name<input id="opname" placeholder="e.g. Mono-Red Aggro"></label>
     <label>List (Arena export format)<textarea id="oplist" style="min-height:140px"></textarea></label><div><button class="btn ghost" id="opgo">Add to gauntlet</button></div></div></details>
   <p id="omsg" class="dim" style="margin:0 0 10px" aria-live="polite"></p>
-  ${g.decks.length ? `<div style="max-height:420px;overflow:auto"><table><thead><tr><th>Deck</th><th>Commander</th><th class="n">Cards</th><th></th></tr></thead><tbody>
-    ${g.decks.map(d => `<tr><td>${esc(d.name)}</td><td class="dim">${esc(d.commander || '')}</td><td class="n">${d.cards}</td><td class="n"><button class="btn ghost" style="min-height:30px;padding:0 10px;font-size:13px" data-orm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></td></tr>`).join('')}
+  ${g.decks.length ? `<div style="max-height:420px;overflow:auto"><table><thead><tr><th>Deck</th><th>Commander</th><th class="n" title="Times you've faced it, or how much it's played in the meta">Faced</th><th class="n">Cards</th><th></th></tr></thead><tbody>
+    ${g.decks.map(d => `<tr><td>${esc(d.name)}</td><td class="dim">${esc(d.commander || '')}</td><td class="n dim">${d.weight ? Math.round(d.weight) : '–'}</td><td class="n">${d.cards}</td><td class="n"><button class="btn ghost" style="min-height:30px;padding:0 10px;font-size:13px" data-orm="${esc(d.id)}" aria-label="Remove ${esc(d.name)}">Remove</button></td></tr>`).join('')}
     </tbody></table></div>
     <p style="margin:10px 0 0"><button class="btn ghost" id="oclear" style="min-height:32px;padding:0 12px;font-size:13px">Remove all</button></p>`
     : '<p class="dim" style="margin:0">No opponents yet. ' + (g.commander ? 'Build them from the commanders you\'ve faced, or add some by name.' : 'Copy decks in or paste lists.') + '</p>'}`;
@@ -348,12 +348,13 @@ async function newRun(pick) {
   <label>Deck<select id="rdeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === pick ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>
   <label>Format<select id="rfmt">${STATUS.formats.map(f => `<option value="${esc(f.key)}">${esc(f.name)}</option>`).join('')}</select></label>
   <label>Games<input id="rgames" type="number" min="1" max="20000" value="200" style="width:120px"></label>
+  <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text);height:34px"><input type="checkbox" id="rweight" checked> Weight opponents by how often you face them</label>
   <button class="btn" id="rgo">Start</button> <button class="btn ghost" id="rstop">Stop</button></div>
   <p id="rmsg" class="dim" style="margin:12px 0 0"></p></div>`;
   const nb = $('#nback'); if (nb) nb.onclick = () => show('runs');
   const fit = () => { const d = DECKS.find(x => x.id === $('#rdeck').value); if (d && d.format) $('#rfmt').value = d.format; };
   $('#rdeck').onchange = fit; fit();
-  $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
+  $('#rgo').onclick = async () => { const r = await api('/api/run', {deck: $('#rdeck').value, format: $('#rfmt').value, games: +$('#rgames').value, weighted: $('#rweight').checked}); $('#rmsg').innerHTML = r.error ? '<span class="err">' + esc(r.error) + '</span>' : 'Started. Progress is up in the corner.'; };
   $('#rstop').onclick = async () => { $('#rmsg').textContent = 'Stopping…'; await api('/api/stop', {}); $('#rmsg').textContent = 'Stopped. Games already finished are kept.'; poll(); };
 }
 

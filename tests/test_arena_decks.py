@@ -162,3 +162,13 @@ def test_swap_verdict_and_changes():
     unclear = server.swap_verdict({"n": 400, "diff": -0.01, "z": -0.5, "p_value": 0.69}, 400)
     assert unclear["kind"] == "unclear" and unclear["more"] > 0
     assert server.swap_verdict({"n": 1, "diff": None, "z": None, "p_value": None}, 1)["kind"] == "none"
+
+
+def test_plan_weights_games_by_how_often_faced():
+    from brewbench import runner
+    opps = ["a", "b", "c"]
+    per = lambda jobs: {o: sum(n for x, n in jobs if x == o) for o in opps}
+    assert per(runner.plan(opps, 30)) == {"a": 10, "b": 10, "c": 10}
+    w = per(runner.plan(opps, 30, weights=[6, 3, 0]))
+    assert sum(w.values()) == 30 and w["c"] == 1 and w["a"] > w["b"] > w["c"]   # never-faced still gets a game
+    assert per(runner.plan(opps, 30, weights=[0, 0, 0])) == {"a": 10, "b": 10, "c": 10}

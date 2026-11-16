@@ -163,7 +163,7 @@ def describe(folder):
         except Exception:
             continue
         out.append({"id": p.stem, "name": d.name, "commander": d.commanders[0] if d.commanders else None,
-                    "cards": d.total})
+                    "cards": d.total, "weight": d.weight})
     return out
 
 
@@ -203,8 +203,17 @@ def build_faced(cfg, fmt, forge_names, use_edhrec=True, limit=None, progress=Non
     Skips commanders already in the gauntlet. Returns (made, skipped)."""
     folder = Path(cfg.gauntlet_dir(fmt.key))
     folder.mkdir(parents=True, exist_ok=True)
-    have = {(d["commander"] or "").lower() for d in describe(folder)}
-    todo = [(c, n, s) for c, (n, s) in faced_commanders(cfg, fmt.key).items() if c.lower() not in have]
+    existing = {(d["commander"] or "").lower(): d["id"] for d in describe(folder)}
+    faced = faced_commanders(cfg, fmt.key)
+    for c, (n, _) in faced.items():               # refresh how often you've faced the ones you already have
+        stem = existing.get(c.lower())
+        if stem:
+            p = folder / f"{stem}.dck"
+            d = D.read_dck(p)
+            if d.weight != n:
+                d.weight = n
+                d.save(p)
+    todo = [(c, n, s) for c, (n, s) in faced.items() if c.lower() not in existing]
     if limit:
         todo = todo[:limit]
     made, skipped = [], []
@@ -218,6 +227,7 @@ def build_faced(cfg, fmt, forge_names, use_edhrec=True, limit=None, progress=Non
             continue
         try:
             deck = brawl_deck(c, [x for x, _ in s.most_common()], forge_names, size=fmt.deck_size, use_edhrec=use_edhrec)
+            deck.weight = n          # times you've faced it
             deck.save(folder / f"{slug(c)}.dck")
             made.append(c)
         except Exception as e:
@@ -253,6 +263,7 @@ def download_meta(cfg, fmt, api=None, top=16):
     for d in data.get("decks") or []:
         deck = D.parse_arena(str(d.get("list") or ""), str(d.get("name") or "meta deck"))
         deck.name = str(d.get("name") or deck.name)
+        deck.weight = float(d.get("games") or 0)   # how much it's played in the meta
         if deck.size < (fmt.deck_size if fmt.commander else 40):
             continue
         got.append((deck, d))

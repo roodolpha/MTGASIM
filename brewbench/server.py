@@ -27,11 +27,13 @@ class Jobs:
         self.current = None
         self.history = []
 
-    def start(self, cfg, fmt, deck, opps, games):
+    def start(self, cfg, fmt, deck, opps, games, weighted=False):
         with self.lock:
             if self.current and self.current["state"] in ("running", "stopping"):
                 raise RuntimeError("A run is already going. Wait for it to finish or stop it.")
             r = runner.Run(cfg, fmt, deck, opps, games, log=lambda *_: None)
+            if weighted:
+                r.weights = [D.read_dck(o).weight for o in opps]
             job = {"run": r.id, "label": r.label, "format": fmt.key, "games": games, "done": 0,
                    "state": "running", "started": int(time.time()), "_r": r}
             self.current = job
@@ -418,7 +420,7 @@ def make_handler(cfg, jobs):
                     if not opps:
                         return self._send(400, {"error": f"the {fmt.name} gauntlet is empty"})
                     games = max(1, min(20000, int(body.get("games") or 200)))
-                    return self._send(200, jobs.start(cfg, fmt, deck, opps, games) and jobs.view())
+                    return self._send(200, jobs.start(cfg, fmt, deck, opps, games, weighted=bool(body.get("weighted"))) and jobs.view())
                 except (ValueError, RuntimeError) as e:
                     return self._send(400, {"error": str(e)})
             if path == "/api/setup/download":
