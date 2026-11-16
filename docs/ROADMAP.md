@@ -22,7 +22,7 @@ Matches the product plan's phases. Ticked items are in the repo.
 
 ## Phase 3: website (0.2, not deployed yet)
 - [x] Opt-in sharing from the simulator: register, upload, rename, forget (`brewbench share`)
-- [x] API on Cloudflare Workers + D1: upload, leaderboards, meta, matchups, player pages (`server/`)
+- [x] API on Cloudflare Workers + D1: upload, leaderboards, meta, matchups, player pages (separate private repo)
 - [x] Static public site reading the API (`site/`), docs in `docs/API.md`, deploy steps in `docs/HOSTING.md`
 - [ ] Deploy (needs the name/domain decided)
 - [ ] Archetype names for constructed decks (beyond colours)

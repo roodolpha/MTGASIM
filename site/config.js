@@ -1,2 +1,2 @@
-// Where the API lives. For local testing: npx wrangler dev in server/, then open site/index.html?api=http://localhost:8787
+// Where the API lives. To point the site at another API for testing, open site/index.html?api=<address>
 window.Brewbench_API = new URLSearchParams(location.search).get("api") || "https://api.brewbench.gg";

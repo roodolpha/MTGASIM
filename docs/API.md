@@ -53,8 +53,8 @@ least 5 times. 404 if there's no public player by that name.
 
 `POST /v1/register` with `{"display_name": "optional", "public": false}` returns `{"client_id", "key"}`.
 Then `POST /v1/upload` with `Authorization: Bearer <client_id>:<key>` and
-`{"matches": [...], "sims": [...], "decks": [...]}` (up to 1,000 of each per request; see `server/src/index.js`
-for the fields). `PATCH /v1/me` changes the display name or public flag; `DELETE /v1/me` deletes everything
+`{"matches": [...], "sims": [...], "decks": [...]}` (up to 1,000 of each per request; `brewbench/share.py`
+builds exactly what the app sends). `PATCH /v1/me` changes the display name or public flag; `DELETE /v1/me` deletes everything
 that uploader has sent. Shared decklists aren't tied to anyone and stay.
 
 ## Fair use

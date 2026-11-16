@@ -18,12 +18,11 @@ jobs:
       - run: python -m pyflakes brewbench
         continue-on-error: true
       - run: python -m pytest -q tests
-  server:
+  site:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --check server/src/index.js
       - run: node --check site/app.js
