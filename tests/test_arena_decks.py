@@ -98,3 +98,37 @@ def test_build_faced_makes_one_deck_per_new_commander(tmp_path, monkeypatch):
     assert made == ["Tam, the Possibility"]                      # Kaalia already there
     assert skipped and "Unknown Guy" in skipped[0]               # not in Forge
     assert [d["commander"] for d in gauntlet.describe(cfg.gauntlet_dir("brawl"))] == ["Kaalia", "Tam, the Possibility"]
+
+
+def test_run_retries_games_that_did_not_finish(tmp_path, monkeypatch):
+    """A batch that produces no games (busy PC, Java didn't start) is retried once; if it still fails the run
+    reports how many games are missing instead of quietly calling itself finished."""
+    import sys, textwrap
+    from brewbench import formats, runner
+    fake = tmp_path / "fakeforge.py"
+    fake.write_text(textwrap.dedent('''
+        import json, sys, os
+        n, out, flag = int(sys.argv[1]), sys.argv[2], sys.argv[3]
+        marker = os.path.join(os.path.dirname(out), "flaky.tried")
+        if flag == "flaky" and not os.path.exists(marker):
+            open(marker, "w").close(); sys.exit(1)               # first attempt: dies before playing
+        if flag == "dead":
+            sys.exit(1)
+        with open(out, "w") as f:
+            for i in range(n):
+                f.write(json.dumps({"result": "Win", "turns": 9}) + "\\n"); print("GAME_DONE", flush=True)
+    '''))
+    def cmd(java, forge_dir, fmt, deck, opp, n, out, timeout, seed):
+        flag = "flaky" if "flaky" in str(opp) else "dead" if "dead" in str(opp) else "ok"
+        return [sys.executable, str(fake), str(n), str(out).replace(".part", "") + ".part", flag]
+    monkeypatch.setattr(runner.forge, "command", cmd)
+    cfg = Config(tmp_path / "home")
+    for name in ("flaky", "dead", "mine"):
+        (tmp_path / f"{name}.dck").write_text("[Main]\n60 Island\n")
+    r = runner.Run(cfg, formats.get("standard"), tmp_path / "mine.dck", [tmp_path / "flaky.dck", tmp_path / "dead.dck"],
+                   4, instances=1, out_dir=tmp_path / "res", log=lambda *a: None)
+    games = []
+    for opp, n in runner.plan(r.opponents, r.games):
+        games += r._batch(sys.executable, tmp_path, opp, n, len(games))
+    assert sum(1 for g in games if "flaky" in g["pair"]) == 2      # recovered on the retry
+    assert r.missing == 2 and "dead" in r.problems[0]             # reported, not hidden

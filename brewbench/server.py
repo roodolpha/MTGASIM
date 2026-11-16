@@ -40,6 +40,8 @@ class Jobs:
             try:
                 r.start(lambda d, t: job.update(done=d))
                 job["state"] = "stopped" if r.stopping else "finished"
+                if r.missing:
+                    job.update(missing=r.missing, problems=r.problems[:6])
             except Exception as e:   # surfaced on the page
                 job.update(state="error", error=str(e))
             self.history.append({k: v for k, v in job.items() if not k.startswith("_")})

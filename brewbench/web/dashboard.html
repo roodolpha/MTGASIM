@@ -430,7 +430,9 @@ async function poll() {
     STATUS = await api('/api/status');
     const s = simming(), j = s.j;
     const text = s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
-      : s.outside ? 'Sims running (started outside the app)' : j ? `Last run ${esc(j.state)}` : '';
+      : s.outside ? 'Sims running (started outside the app)'
+      : j && j.missing ? `<span class="err" title="${esc((j.problems || []).join(', '))}">Last run: ${j.missing} of ${j.games} games couldn't be played (PC too busy?)</span>`
+      : j ? `Last run ${esc(j.state)}` : '';
     $('#job').innerHTML = text + (s.any && !(j && j.state === 'stopping') ? ' <button class="btn stop" id="hstop">Stop sims</button>' : '');
     const hs = $('#hstop'); if (hs) hs.onclick = () => stopAll(hs);
     const banner = $('#runbanner'); if (banner) banner.hidden = !s.any;

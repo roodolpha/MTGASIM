@@ -62,16 +62,20 @@ class Run:
         self.lock = threading.Lock()
         self.stopping = False
         self.procs = set()
+        self.missing = 0          # games that never got played (Forge failed to start, crashed or timed out)
+        self.problems = []        # short reasons, shown to the user
 
-    def _batch(self, java, forge_dir, opp, n, idx):
+    def _batch(self, java, forge_dir, opp, n, idx, attempt=1):
         if self.stopping:   # queued batches after Stop: don't start them
             return []
-        tmp = self.out_dir / f".{self.id}-{idx}.part"
+        tmp = self.out_dir / f".{self.id}-{idx}-{attempt}.part"
+        errf = self.out_dir / f".{self.id}-{idx}-{attempt}.err"
         seed = None if self.seed is None else self.seed + idx
         cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), opp.resolve(), n, tmp.resolve(),
                             GAME_TIMEOUT, seed)
         flags = (0x08000000 | 0x00004000) if os.name == "nt" else 0   # no console window, below-normal priority
-        p = subprocess.Popen(cmd, cwd=forge_dir, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        err = open(errf, "w", encoding="utf-8", errors="replace")
+        p = subprocess.Popen(cmd, cwd=forge_dir, stdout=subprocess.PIPE, stderr=err,
                              text=True, creationflags=flags)
         with self.lock:
             self.procs.add(p)
@@ -90,6 +94,7 @@ class Run:
         finally:
             with self.lock:
                 self.procs.discard(p)
+            err.close()
         games = []
         if tmp.exists():
             for k, l in enumerate(tmp.read_text(encoding="utf-8").splitlines()):
@@ -105,6 +110,28 @@ class Run:
         with self.lock, open(self.results, "a", encoding="utf-8") as f:
             for g in games:
                 f.write(json.dumps(g, separators=(",", ":")) + "\n")
+        short = n - len(games)
+        if short > 0 and not self.stopping:
+            # usually a busy PC: Java couldn't start or a game hung. Keep Forge's error output for diagnostics
+            # and try the missing games once more before giving up on them.
+            keep = self.cfg.home / "logs" / f"forge-{self.id}-{idx}-{attempt}.log"
+            try:
+                keep.parent.mkdir(parents=True, exist_ok=True)
+                errf.replace(keep)
+            except OSError:
+                pass
+            if attempt == 1:
+                self.log(f"{short} game(s) vs {opp.stem} didn't finish; trying them again")
+                return games + self._batch(java, forge_dir, opp, short, idx + 10000, attempt=2)
+            with self.lock:
+                self.missing += short
+                self.problems.append(f"{short} vs {opp.stem}")
+            self.log(f"{short} game(s) vs {opp.stem} couldn't be played (Forge's output is in {keep})")
+        else:
+            try:
+                errf.unlink()
+            except OSError:
+                pass
         return games
 
     def start(self, progress=None):
