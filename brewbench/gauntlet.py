@@ -239,3 +239,29 @@ def add_commander(cfg, fmt, commander, forge_names, use_edhrec=True):
     folder = Path(cfg.gauntlet_dir(fmt.key))
     folder.mkdir(parents=True, exist_ok=True)
     return deck.save(folder / f"{slug(c)}.dck"), deck
+
+
+def download_meta(cfg, fmt, api=None, top=16):
+    """The format's current meta from the Brewbench site: the most-played shared list for each commander or
+    archetype, saved as meta-*.dck in the gauntlet (replacing the last download). Returns the deck names."""
+    from . import share
+    base = (api or cfg.get("share_api") or share.DEFAULT_API).rstrip("/")
+    data = _get(f"{base}/v1/gauntlet?format={fmt.key}&top={int(top)}", timeout=30)
+    folder = Path(cfg.gauntlet_dir(fmt.key))
+    folder.mkdir(parents=True, exist_ok=True)
+    got = []
+    for d in data.get("decks") or []:
+        deck = D.parse_arena(str(d.get("list") or ""), str(d.get("name") or "meta deck"))
+        deck.name = str(d.get("name") or deck.name)
+        if deck.size < (fmt.deck_size if fmt.commander else 40):
+            continue
+        got.append((deck, d))
+    if not got:
+        return []
+    for old in folder.glob("meta-*.dck"):
+        old.unlink()
+    names = []
+    for deck, d in got:
+        deck.save(folder / f"meta-{slug(deck.name) or d.get('hash', 'deck')}.dck")
+        names.append(deck.name)
+    return names

@@ -415,6 +415,12 @@ def make_handler(cfg, jobs):
                         lim = int(body.get("limit") or 0) or None
                         ok = start_gauntlet_build(cfg, fmt, bool(body.get("edhrec", True)), lim)
                         return self._send(200 if ok else 409, {"job": GAUNTLET_JOB} if ok else {"error": "Already building."})
+                    if path == "/api/gauntlet/meta":
+                        names = gauntlet.download_meta(cfg, fmt)
+                        if not names:
+                            return self._send(200, {"added": [], "note": f"Nobody has shared enough {fmt.name} decklists yet. "
+                                                    "Tick 'Share my decklists too' in Settings to help get it going."})
+                        return self._send(200, {"added": names})
                     if path == "/api/gauntlet/cancel":
                         _GJ_STOP.set()
                         return self._send(200, {"ok": True})

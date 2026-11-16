@@ -132,3 +132,18 @@ def test_run_retries_games_that_did_not_finish(tmp_path, monkeypatch):
         games += r._batch(sys.executable, tmp_path, opp, n, len(games))
     assert sum(1 for g in games if "flaky" in g["pair"]) == 2      # recovered on the retry
     assert r.missing == 2 and "dead" in r.problems[0]             # reported, not hidden
+
+
+def test_download_meta_saves_and_replaces(tmp_path, monkeypatch):
+    from brewbench import formats, gauntlet
+    cfg = Config(tmp_path / "home")
+    fmt = formats.get("standard")
+    lists = [{"name": "Mono-Red Aggro", "hash": "a1", "list": "Deck\n20 Mountain\n40 Shock"},
+             {"name": "Tiny", "hash": "b2", "list": "Deck\n4 Opt"}]
+    monkeypatch.setattr(gauntlet, "_get", lambda url, timeout=30: {"decks": lists})
+    folder = cfg.gauntlet_dir("standard"); folder.mkdir(parents=True)
+    (folder / "meta-old.dck").write_text("[Main]\n60 Island\n")
+    (folder / "mine.dck").write_text("[Main]\n60 Island\n")
+    assert gauntlet.download_meta(cfg, fmt, api="https://x") == ["Mono-Red Aggro"]   # too-small list skipped
+    names = sorted(p.name for p in folder.iterdir())
+    assert names == ["meta-mono-red-aggro.dck", "mine.dck"]                         # old meta replaced, yours kept

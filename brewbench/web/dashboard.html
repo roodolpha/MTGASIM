@@ -225,6 +225,7 @@ async function opponents() {
   ${building ? `<p style="margin:0 0 12px">Building ${job.done}/${job.total || '?'}${job.current ? ': ' + esc(job.current) : ''}… <button class="btn ghost" id="ocancel" style="min-height:32px;padding:0 12px;font-size:13px">Cancel</button></p>`
     : job.format === OPPFMT && job.state === 'done' ? `<p class="dim" style="margin:0 0 12px">Added ${job.made.length} deck${job.made.length === 1 ? '' : 's'}.${job.skipped.length ? ' Skipped: ' + esc(job.skipped.slice(0, 6).join(', ')) + (job.skipped.length > 6 ? '…' : '') : ''}</p>`
     : job.format === OPPFMT && job.state === 'error' ? `<p class="err" style="margin:0 0 12px">${esc(job.error)}</p>` : ''}
+  <div class="form" style="margin-bottom:12px"><button class="btn${g.commander ? ' ghost' : ''}" id="ometa">Download this month's meta from Brewbench</button><span class="dim" style="font-size:12px">The most-played list for each ${g.commander ? 'commander' : 'deck'}, from players who share. Replaces the last download.</span></div>
   <div class="form" style="margin-bottom:14px">
     <label>Copy one of my decks in<select id="ocopy"><option value="">Pick a deck…</option>${DECKS.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></label><button class="btn ghost" id="ocopygo">Copy</button>
   </div>
@@ -242,6 +243,7 @@ async function opponents() {
   box.querySelectorAll('[data-ofmt]').forEach(b => b.onclick = () => { OPPFMT = b.dataset.ofmt; opponents(); });
   const bb = $('#obuild'); if (bb) bb.onclick = async () => { if (await post('/api/gauntlet/build', {edhrec: $('#oedh').checked})) opponents(); };
   const cg = $('#ocmdgo'); if (cg) cg.onclick = async () => { msg('Looking it up…'); const r = await post('/api/gauntlet/commander', {commander: $('#ocmd').value}); if (r) { opponents(); } };
+  $('#ometa').onclick = async () => { msg('Downloading…'); const r = await post('/api/gauntlet/meta', {}); if (!r) return; if (r.note) { msg(esc(r.note)); return; } msg(`Added ${r.added.length} meta deck${r.added.length === 1 ? '' : 's'}.`); setTimeout(opponents, 800); };
   const cc = $('#ocancel'); if (cc) cc.onclick = async () => { await post('/api/gauntlet/cancel', {}); };
   $('#ocopygo').onclick = async () => { if (!$('#ocopy').value) return; if (await post('/api/gauntlet/copy', {deck: $('#ocopy').value})) opponents(); };
   $('#opgo').onclick = async () => { if (await post('/api/gauntlet/paste', {name: $('#opname').value, list: $('#oplist').value})) opponents(); };
@@ -377,7 +379,7 @@ async function shareBox() {
   <div class="form">
     <label>Name on the site<input id="shname" value="${esc(sh.name)}" placeholder="leave empty to stay anonymous" maxlength="24" style="min-width:260px"></label>
     <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shpub" ${sh.public ? 'checked' : ''} style="min-height:auto"> Show me on leaderboards</label>
-    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shlists" ${sh.lists ? 'checked' : ''} style="min-height:auto"> Share my decklists too</label>
+    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shlists" ${sh.lists ? 'checked' : ''} style="min-height:auto"> Share my decklists too (they build everyone's meta gauntlet)</label>
     <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="shauto" ${sh.auto ? 'checked' : ''} style="min-height:auto"> Send new games automatically</label>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center">
