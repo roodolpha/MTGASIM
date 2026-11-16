@@ -1,6 +1,6 @@
 {
- "version": "0.7.3",
+ "version": "0.7.4",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "A fresh look that matches the website: Arena navy and gold, new fonts that work offline, and sentence-case labels throughout."
+ "notes": "Sim results name each opponent's commander with its art, and show the likely range for every matchup instead of a bare percentage."
 }

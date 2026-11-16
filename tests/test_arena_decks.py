@@ -243,3 +243,21 @@ def test_card_ideas_from_edhrec(tmp_path, monkeypatch):
     assert [c["name"] for c in r["cards"]] == ["Birds of Paradise", "Simic Ascendancy"]
     assert r["cards"][1]["category"] == "Enchantment" and r["cards"][1]["tags"] == ["top"]
     assert r["left_out"] == 1 and r["decks"] == 100
+
+
+def test_run_matchups_show_commander_names(tmp_path):
+    """A run's matchups name the opponent's commander, not the deck file's slug."""
+    import json
+    from brewbench import config, server
+    cfg = config.Config(tmp_path)
+    g = cfg.gauntlet_dir("brawl"); g.mkdir(parents=True, exist_ok=True)
+    (g / "aerith-gainsborough.dck").write_text("[metadata]\nName=Aerith Gainsborough\n[Commander]\n1 Aerith Gainsborough\n[Main]\n1 Plains\n")
+    rd = cfg.results_dir; rd.mkdir(parents=True, exist_ok=True)
+    (rd / "r1.meta.json").write_text(json.dumps({"run": "r1", "format": "brawl", "opponents": ["/elsewhere/aerith-gainsborough.dck"]}))
+    rows = [{"result": r, "first": "a", "turns": 10, "deck_b": d} for r, d in
+            [("Win", "aerith-gainsborough.dck"), ("Loss", "aerith-gainsborough.dck"), ("Win", "doctor-doom-king-of-latveria.dck")]]
+    (rd / "r1.jsonl").write_text("\n".join(json.dumps(x) for x in rows))
+    out = {o["id"]: o for o in server.run_detail(cfg, "r1")["opponents"]}
+    assert out["aerith-gainsborough"]["opponent"] == "Aerith Gainsborough"
+    assert out["aerith-gainsborough"]["commander"] == "Aerith Gainsborough"
+    assert out["doctor-doom-king-of-latveria"]["opponent"] == "Doctor Doom King of Latveria"   # no deck file: tidied slug

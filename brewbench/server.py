@@ -263,6 +263,32 @@ def run_list(cfg):
     return out
 
 
+def _tidy(stem):
+    """'doctor-doom-king-of-latveria' -> 'Doctor Doom King of Latveria' when the deck file is gone."""
+    small = {"of", "the", "and", "a", "an", "to", "in", "on", "for"}
+    words = stem.replace("_", "-").split("-")
+    return " ".join(w if i and w in small else w[:1].upper() + w[1:] for i, w in enumerate(words))
+
+
+def _opponent_names(cfg, meta):
+    """{deck file stem: {"name", "commander"}} for a run's opponents: from the files the run used, else the
+    format's gauntlet folder (results copied from another PC point at paths that don't exist here)."""
+    out = {}
+    paths = [Path(p) for p in meta.get("opponents") or []]
+    fk = meta.get("format")
+    if fk in formats.FORMATS:
+        paths += gauntlet.list_decks(cfg.gauntlet_dir(fk))
+    for p in paths:
+        if p.stem in out or not p.is_file():
+            continue
+        try:
+            d = D.read_dck(p)
+        except Exception:
+            continue
+        out[p.stem] = {"name": d.name, "commander": d.commanders[0] if d.commanders else None}
+    return out
+
+
 def run_detail(cfg, run_id):
     rd = cfg.results_dir
     meta_f = rd / f"{run_id}.meta.json"
@@ -281,7 +307,14 @@ def run_detail(cfg, run_id):
             turns.setdefault(b, [0, 0])
             turns[b][0] += 1
             turns[b][1] += g.get("result") == "Win"
-    return {**meta, "summary": stats.summary(games), "opponents": stats.by_opponent(games), "cards": cards,
+    opps = stats.by_opponent(games)
+    names = _opponent_names(cfg, meta)
+    for o in opps:
+        n = names.get(o["opponent"]) or {}
+        o["id"] = o["opponent"]
+        o["commander"] = n.get("commander")
+        o["opponent"] = n.get("commander") or n.get("name") or _tidy(o["opponent"])
+    return {**meta, "summary": stats.summary(games), "opponents": opps, "cards": cards,
             "length": [{"turn": k, "games": v[0], "wins": v[1]} for k, v in sorted(turns.items())]}
 
 

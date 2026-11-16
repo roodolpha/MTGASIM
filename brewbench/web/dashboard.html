@@ -194,14 +194,17 @@ async function runPage(id) {
   <div><b>${pct(s.on_play)}</b><span>on the play</span></div><div><b>${pct(s.on_draw)}</b><span>on the draw</span></div>
   ${s.avg_turns ? `<div><b>${Math.round(s.avg_turns / 2)}</b><span>turns a game</span></div>` : ''}</div></div>
   <div class="grid2">
-  <div class="panel"><h2 style="margin-bottom:8px">Matchups, worst first</h2>
-  <table><thead><tr><th>Opponent</th><th class="n">Won</th><th></th><th class="n">Games</th></tr></thead><tbody>
-  ${r.opponents.map(o => `<tr><td>${esc(o.opponent)}</td><td class="n">${pct(o.win_rate)}</td><td><div class="bar"><i class="${o.win_rate < .5 ? 'bad' : ''}" style="width:${Math.round(100 * (o.win_rate || 0))}%"></i></div></td><td class="n dim">${o.games}</td></tr>`).join('')}
+  <div class="panel"><h2 style="margin-bottom:4px">Matchups, worst first</h2>
+  ${r.opponents.length && Math.max(...r.opponents.map(o => o.games)) < 30 ? `<p class="dim" style="margin:0 0 8px;font-size:13px">Only ${Math.max(...r.opponents.map(o => o.games))} games against each, so these are rough: the range shows where each one probably really sits. Run more games to narrow it.</p>` : ''}
+  <table><thead><tr><th>Opponent</th><th class="n">Won</th><th>Likely true rate</th><th class="n">Games</th></tr></thead><tbody>
+  ${r.opponents.map(o => `<tr><td><div style="display:flex;align-items:center;gap:10px">${o.commander ? `<span style="flex:none;width:44px;height:32px;border-radius:2px;background:var(--s2) center/cover url('${esc(art(o.commander))}')"></span>` : ''}<a href="https://scryfall.com/search?q=${encodeURIComponent('!"' + (o.commander || o.opponent) + '"')}" target="_blank" rel="noopener" style="text-decoration:none;font-weight:600">${esc(o.opponent)}</a></div></td>
+    <td class="n" style="color:${o.win_rate < .45 ? 'var(--loss)' : o.win_rate > .55 ? 'var(--win)' : 'inherit'}">${pct(o.win_rate)}</td>
+    <td class="dim" style="white-space:nowrap">${o.ci95 ? Math.round(100 * o.ci95[0]) + '–' + Math.round(100 * o.ci95[1]) + '%' : ''}</td><td class="n dim">${o.games}</td></tr>`).join('')}
   </tbody></table></div>
   <div class="panel"><h2 style="margin-bottom:4px">When this card hit the table…</h2>
   <p class="dim" style="margin:0 0 8px;font-size:13px">Win rate when the card was on the battlefield vs when it wasn't. It's a hint for what to test, not proof: cheap cards land more often.</p>
   <table><thead><tr><th>Card</th><th class="n">Seen</th><th class="n">With</th><th class="n">Without</th></tr></thead><tbody>
-  ${r.cards.slice(0, 12).map(c => `<tr><td>${esc(c.card)}</td><td class="n dim">${c.games_seen}</td><td class="n">${pct(c.win_seen)}</td><td class="n dim">${pct(c.win_not_seen)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">Needs more games.</td></tr>'}
+  ${r.cards.slice(0, 12).map(c => `<tr><td><div style="display:flex;align-items:center;gap:10px"><span style="flex:none;width:44px;height:32px;border-radius:2px;background:var(--s2) center/cover url('${esc(art(c.card))}')"></span><a href="https://scryfall.com/search?q=${encodeURIComponent('!"' + c.card + '"')}" target="_blank" rel="noopener" style="text-decoration:none;font-weight:600">${esc(c.card)}</a></div></td><td class="n dim">${c.games_seen}</td><td class="n">${pct(c.win_seen)}</td><td class="n dim">${pct(c.win_not_seen)}</td></tr>`).join('') || '<tr><td colspan="4" class="dim">Needs more games.</td></tr>'}
   </tbody></table></div></div>`;
   $('.back').onclick = () => show('runs');
 }
