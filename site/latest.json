@@ -1,6 +1,6 @@
 {
- "version": "0.6.1",
+ "version": "0.7.0",
  "url": "https://github.com/roodolpha/MTGASIM/releases/latest/download/brewbench-setup.exe",
  "page": "https://github.com/roodolpha/MTGASIM/releases/latest",
- "notes": "Sims retry games that fail to start on a busy PC, and say so if any still can't be played."
+ "notes": "Test a change: see if a swap really helped. One-click meta gauntlets, an Optimiser screen, ladder vs sim on every deck, and opponents weighted by how often you face them."
 }
