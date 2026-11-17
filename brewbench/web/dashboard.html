@@ -280,7 +280,7 @@ async function swapPage(pick) {
   else if (sw.state === 'stopped') result = '<p class="dim">Stopped.</p>';
   $('#main').innerHTML = `<div class="plain"><button class="back" id="swback">← All sims</button><h1 class="page">Test a change</h1>
     <p class="dim" style="margin:0">Edit a copy of your deck and both versions play the same games: same shuffles, same opponents. Any difference comes from the cards, not luck.</p></div>
-    ${running ? `<section class="panel"><b>Testing a change to ${esc(sw.deck)}</b><p class="dim" style="margin:6px 0 10px">Playing ${sw.phase === 'A' ? 'your deck' : 'the changed version'}: ${sw.done}/${2 * sw.games} games.</p>${changes}<p style="margin:10px 0 0"><button class="btn stop" id="swstop">Stop</button></p></section>` : result}
+    ${running ? `<section class="panel"><b>Testing a change to ${esc(sw.deck)}</b><p class="dim" style="margin:6px 0 10px">${sw.waiting ? 'Waiting for another test on this PC to finish, then it starts by itself.' : `Playing ${sw.phase === 'A' ? 'your deck' : 'the changed version'}: ${sw.done}/${2 * sw.games} games.`}</p>${changes}<p style="margin:10px 0 0"><button class="btn stop" id="swstop">Stop</button></p></section>` : result}
     <section class="panel"><div class="form" style="margin-bottom:12px">
       <label>Deck<select id="swdeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === cur.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>
       <label>Format<select id="swfmt">${fmts.map(f => `<option value="${esc(f.key)}" ${f.key === (cur.format || 'brawl') ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>
@@ -564,8 +564,8 @@ async function poll() {
     STATUS = await api('/api/status');
     const s = simming(), j = s.j;
     const text = s.op ? `Optimising ${esc(STATUS.opt.deck)}: ${esc(STATUS.opt.last || '')}`
-      : s.swap ? `Testing a change to ${esc(s.sw.deck)}: ${s.sw.done}/${2 * s.sw.games} games`
-      : s.mine ? `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`
+      : s.swap ? (s.sw.waiting ? `Testing a change to ${esc(s.sw.deck)}: waiting for another test to finish` : `Testing a change to ${esc(s.sw.deck)}: ${s.sw.done}/${2 * s.sw.games} games`)
+      : s.mine ? (j.waiting && j.state === 'running' ? `${esc(j.label)}: waiting for another test to finish` : `${j.state === 'stopping' ? 'Stopping' : 'Simming'} ${esc(j.label)}: ${j.done}/${j.games} games`)
       : s.outside ? 'Sims running (started outside the app)'
       : j && j.missing ? `<span class="err" title="${esc((j.problems || []).join(', '))}">Last run: ${j.missing} of ${j.games} games couldn't be played (PC too busy?)</span>`
       : j ? `Last run ${esc(j.state)}` : '';

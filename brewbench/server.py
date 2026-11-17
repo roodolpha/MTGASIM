@@ -40,7 +40,7 @@ class Jobs:
 
         def go():
             try:
-                r.start(lambda d, t: job.update(done=d))
+                r.start(lambda d, t: job.update(done=d), waiting=lambda w: job.update(waiting=w))
                 job["state"] = "stopped" if r.stopping else "finished"
                 if r.missing:
                     job.update(missing=r.missing, problems=r.problems[:6])
@@ -142,7 +142,8 @@ def start_swap(cfg, fmt, deck_path, list_b, games, opps):
                 r = runner.Run(cfg, fmt, path, opps, games, seed=seed, label=label, out_dir=folder / "results",
                                log=lambda *_: None)
                 _SWAP_RUN["r"] = r
-                res.append(r.start(lambda d, t: SWAP.update(done=d + (games if phase == "B" else 0))))
+                res.append(r.start(lambda d, t: SWAP.update(done=d + (games if phase == "B" else 0)),
+                                   waiting=lambda w: SWAP.update(waiting=w)))
                 if r.stopping:
                     SWAP.update(state="stopped")
                     return

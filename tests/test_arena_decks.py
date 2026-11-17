@@ -324,3 +324,24 @@ def test_one_start_up_plays_several_opponents(tmp_path, monkeypatch):
         assert "slot" not in g and g["pair"].startswith(g["deck_b"])
     assert per == {"ok.dck": 3, "flaky.dck": 3} and r.missing == 0
     assert not list((tmp_path / "res").glob(".*.opps"))
+
+
+def test_second_test_waits_for_the_first(tmp_path):
+    """Two tests at once share the same cores and both crawl, so a second one waits its turn."""
+    import threading, time
+    from brewbench import formats, runner
+    cfg = Config(tmp_path / "home")
+    held = runner.SimLock(cfg.home / "sim.lock")
+    assert held.acquire()
+    r = runner.Run(cfg, formats.get("standard"), tmp_path / "mine.dck", [], 0, instances=1,
+                   out_dir=tmp_path / "res", log=lambda *a: None)
+    seen, ran = [], []
+    r._start = lambda progress=None: ran.append(1) or []
+    t = threading.Thread(target=r.start, kwargs={"waiting": seen.append})
+    t.start()
+    time.sleep(0.5)
+    assert seen == [True] and not ran            # waiting, not playing
+    held.release()
+    t.join(5)
+    assert seen == [True, False] and ran == [1]
+    assert runner.SimLock(cfg.home / "sim.lock").acquire()   # released after the run

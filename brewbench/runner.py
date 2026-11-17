@@ -56,6 +56,49 @@ def plan(opponents, games, batch=BATCH, weights=None):
     return out
 
 
+class SimLock:
+    """One test at a time on this PC, across the app, the command line and the optimiser: two tests at once
+    share the same cores, so both just run at half speed. An OS file lock, so it's released if a process dies."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.f = None
+
+    def acquire(self):
+        """True if we now hold the lock, False if another test does."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        f = open(self.path, "a+")
+        try:
+            if os.name == "nt":
+                import msvcrt
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            f.close()
+            return False
+        self.f = f
+        return True
+
+    def release(self):
+        if self.f is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self.f.seek(0)
+                msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.f.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        self.f.close()
+        self.f = None
+
+
 def pack(jobs, size):
     """Group plan() output into Java start-ups of `size` games each: [[(opponent, n), ...], ...].
     An opponent's games may be split across two start-ups; the order of plan() is kept."""
@@ -197,7 +240,28 @@ class Run:
                 pass
         return games
 
-    def start(self, progress=None):
+    def start(self, progress=None, waiting=None):
+        """Plays the run. If another test is already running on this PC, waits for it first
+        (waiting(True) / waiting(False) tell the caller)."""
+        lock = SimLock(self.cfg.home / "sim.lock")
+        if not lock.acquire():
+            self.log("Another test is running on this PC; this one starts when it finishes.")
+            if waiting:
+                waiting(True)
+            while not lock.acquire():
+                if self.stopping:
+                    if waiting:
+                        waiting(False)
+                    return []
+                time.sleep(2)
+            if waiting:
+                waiting(False)
+        try:
+            return self._start(progress)
+        finally:
+            lock.release()
+
+    def _start(self, progress=None):
         forge_dir = self.cfg.forge_dir
         java = forge.find_java(forge_dir, self.cfg.get("java"))
         forge.prepare(forge_dir, self.cfg.get("ai_profile", "Default"))
