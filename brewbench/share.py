@@ -11,6 +11,7 @@ Your Arena name is never read or sent. You're anonymous unless you pick a displa
 """
 import hashlib
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -270,7 +271,14 @@ def share_now(cfg):
                 c.register(name, public)
             elif (cfg.get("share_sent_name"), cfg.get("share_sent_public")) != (name, public):
                 c.update(name, public)
-            r = c.upload(build_payload(cfg, bool(cfg.get("share_lists"))))
+            payload = build_payload(cfg, bool(cfg.get("share_lists")))
+            sent = _sent(cfg, c)
+            fresh = {k: [x for x in payload[k] if sent[k].get(_key(k, x)) != _fp(k, x)] for k in ("matches", "sims", "decks")}
+            r = c.upload(fresh) if any(fresh.values()) else {"matches": 0, "sims": 0, "decks": 0, "rejected": 0}
+            for k, rows in fresh.items():          # only after the server took them
+                for x in rows:
+                    sent[k][_key(k, x)] = _fp(k, x)
+            _save_sent(cfg, sent)
             cfg.data.update(share_last={"at": int(time.time()), **r}, share_sent_name=name, share_sent_public=public)
             cfg.save()
             return r
@@ -281,17 +289,59 @@ def share_now(cfg):
             STATUS["busy"] = False
 
 
+# --- what the site already has, so each share sends only new or changed rows (every row written costs
+# the free database plan; re-sending everything after each game used up its daily writes)
+def _key(kind, x):
+    return x.get("match_key") if kind == "matches" else x.get("hash") if kind == "decks" else f'{x.get("run_id")}|{x.get("opp_key")}'
+
+
+def _fp(kind, x):
+    return x.get("result") if kind == "matches" else 1 if kind == "decks" else f'{x.get("games")},{x.get("wins")},{x.get("draws", 0)}'
+
+
+def _sent_path(cfg):
+    return cfg.home / "share_sent.json"
+
+
+def _sent(cfg, client):
+    try:
+        d = json.loads(_sent_path(cfg).read_text(encoding="utf-8"))
+        if d.get("client") == cfg.get("share_id"):
+            return {k: d.get(k) or {} for k in ("matches", "sims", "decks")}
+    except (OSError, ValueError, AttributeError):
+        pass
+    return {"matches": {}, "sims": {}, "decks": {}}
+
+
+def _save_sent(cfg, sent):
+    tmp = _sent_path(cfg).with_suffix(".tmp")
+    tmp.write_text(json.dumps({"client": cfg.get("share_id"), **sent}), encoding="utf-8")
+    os.replace(tmp, _sent_path(cfg))
+
+
+SHARE_GAP = 600          # automatic shares at most every 10 minutes; one is queued for the end of the gap
+_pending = {"timer": None}
+
+
 def share_soon(cfg):
     """share_now in the background (after a game, or when the app starts). Never raises."""
-    if STATUS["busy"]:
+    if STATUS["busy"] or _pending["timer"]:
         return False
+    wait = SHARE_GAP - (time.time() - ((cfg.get("share_last") or {}).get("at") or 0))
 
     def run():
+        _pending["timer"] = None
         try:
             share_now(cfg)
         except Exception:
             pass   # kept in STATUS["error"] for the Settings page
-    _threading.Thread(target=run, name="brewbench-share", daemon=True).start()
+    if wait > 0:
+        t = _threading.Timer(wait, run)
+        t.daemon = True
+        _pending["timer"] = t
+        t.start()
+    else:
+        _threading.Thread(target=run, name="brewbench-share", daemon=True).start()
     return True
 
 
@@ -301,4 +351,8 @@ def forget(cfg):
         for k in ("share_last", "share_sent_name", "share_sent_public", "share_auto"):
             cfg.data.pop(k, None)
         cfg.save()
+        try:
+            _sent_path(cfg).unlink()
+        except OSError:
+            pass
         return r

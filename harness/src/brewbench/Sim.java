@@ -28,6 +28,9 @@ import forge.view.TimeLimitedCodeBlock;
  *
  * Usage: Sim &lt;format&gt; &lt;deckA.dck&gt; &lt;deckB.dck&gt; &lt;games&gt; &lt;out.jsonl&gt; [timeoutSecs] [seed]
  *   format: brawl | constructed
+ *   deckB may be "@list.txt": one "path&lt;TAB&gt;games" line per opponent, all played in this one start-up
+ *   (starting Forge takes several seconds). "games" is then ignored, and each line also gets "slot" (the
+ *   0-based line it came from).
  *
  * Each line: {"result":"Win|Loss|Draw|Error","first":"a|b","ms":..,"turns":..,"deck_b":"file.dck",
  *             "life":{"a":..,"b":..},"states":[...]}
@@ -84,40 +87,60 @@ public final class Sim {
         final boolean brawl = format.equals("brawl");
         final int games = Integer.parseInt(args[3]);
         final int timeout = args.length > 5 ? Integer.parseInt(args[5]) : 180;
-        if (args.length > 6) {
-            // Forge shuffles through its own RNG; seeding makes paired comparisons (same seed, two decks) possible
-            forge.util.MyRandom.setRandom(new Random(Long.parseLong(args[6])));
-        }
+        // Forge shuffles through its own RNG; seeding makes paired comparisons (same seed, two decks) possible.
+        // Every game is reseeded from (seed, opponent line, game number), so game k against an opponent starts
+        // the same way whatever happened in the games before it.
+        final Long seed = args.length > 6 ? Long.valueOf(args[6]) : null;
 
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
         final Deck a = DeckSerializer.fromFile(new File(args[1]));
-        final Deck b = DeckSerializer.fromFile(new File(args[2]));
-        if (a == null || b == null) {
+        if (a == null) {
             System.out.println("DECK_ERROR");
             System.exit(2);
         }
+        // opponents: [path, games] pairs
+        List<String[]> opps = new ArrayList<>();
+        if (args[2].startsWith("@")) {
+            for (String line : java.nio.file.Files.readAllLines(new File(args[2].substring(1)).toPath(), StandardCharsets.UTF_8)) {
+                String[] parts = line.split("\t");
+                if (parts.length == 2 && !parts[0].isBlank()) opps.add(parts);
+            }
+        } else {
+            opps.add(new String[]{args[2], String.valueOf(games)});
+        }
+        final boolean listed = args[2].startsWith("@");
 
         GameType type = brawl ? GameType.Brawl : GameType.Constructed;
         GameRules rules = new GameRules(type);
         if (brawl) rules.setAppliedVariants(EnumSet.of(GameType.Brawl));
         rules.setSimTimeout(timeout);
 
-        List<RegisteredPlayer> players = new ArrayList<>();
-        Deck[] decks = {a, b};
-        String[] names = {"a", "b"};
-        for (int i = 0; i < 2; i++) {
-            RegisteredPlayer rp = brawl
-                    ? RegisteredPlayer.forVariants(2, EnumSet.of(GameType.Brawl), decks[i], null, false, null, null)
-                    : new RegisteredPlayer(decks[i]);
-            rp.setPlayer(GamePlayerUtil.createAiPlayer(names[i], i, ""));
-            players.add(rp);
-        }
-        Match match = new Match(rules, players, "Brewbench");
-        final String deckB = new File(args[2]).getName();
-
         try (Writer out = new OutputStreamWriter(new FileOutputStream(args[4], true), StandardCharsets.UTF_8)) {
-            for (int g = 0; g < games; g++) {
+          for (int slot = 0; slot < opps.size(); slot++) {
+            final Deck b = DeckSerializer.fromFile(new File(opps.get(slot)[0]));
+            final int count = Integer.parseInt(opps.get(slot)[1].trim());
+            if (b == null) {
+                System.out.println("DECK_ERROR " + opps.get(slot)[0]);
+                continue;
+            }
+            List<RegisteredPlayer> players = new ArrayList<>();
+            Deck[] decks = {a, b};
+            String[] names = {"a", "b"};
+            for (int i = 0; i < 2; i++) {
+                RegisteredPlayer rp = brawl
+                        ? RegisteredPlayer.forVariants(2, EnumSet.of(GameType.Brawl), decks[i], null, false, null, null)
+                        : new RegisteredPlayer(decks[i]);
+                rp.setPlayer(GamePlayerUtil.createAiPlayer(names[i], i, ""));
+                players.add(rp);
+            }
+            Match match = new Match(rules, players, "Brewbench");
+            final String deckB = new File(opps.get(slot)[0]).getName();
+            final String slotField = listed ? ",\"slot\":" + slot : "";
+            for (int g = 0; g < count; g++) {
+                if (seed != null) {
+                    forge.util.MyRandom.setRandom(new Random(seed * 1_000_003L + slot * 10_007L + g));
+                }
                 final Game game = match.createGame();
                 game.setNoGUIUser();
                 final List<String> states = Collections.synchronizedList(new ArrayList<>());
@@ -158,12 +181,13 @@ public final class Sim {
                         ? ",\"life\":{\"a\":" + pa.getLife() + ",\"b\":" + pb.getLife() + "}" : "";
                 out.write("{\"result\":" + q(result) + ",\"first\":" + q(String.valueOf(firstPlayer[0]))
                         + ",\"ms\":" + (System.currentTimeMillis() - t0) + ",\"turns\":" + lastTurn[0]
-                        + ",\"deck_b\":" + q(deckB) + life
+                        + ",\"deck_b\":" + q(deckB) + slotField + life
                         + ",\"states\":[" + String.join(",", states) + "]}\n");
                 out.flush();
                 System.out.println("GAME_DONE " + result);
                 System.out.flush();
             }
+          }
         }
         System.exit(0);
     }

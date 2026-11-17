@@ -1,9 +1,10 @@
 """Runs many Forge games in parallel: your deck against a gauntlet of opponent decks.
 
-Work is split into batches (one Java process plays a batch of games against one opponent, because starting
-Forge costs several seconds). Batches are spread evenly over the gauntlet, so every opponent gets close to
-the same number of games."""
+Work is split into batches: one Java process plays up to BATCH games, against one or several opponents,
+because starting Forge costs several seconds. Games are spread evenly over the gauntlet, so every opponent
+gets close to the same number of games."""
 import json
+import math
 import os
 import subprocess
 import threading
@@ -14,7 +15,8 @@ from pathlib import Path
 
 from . import forge
 
-BATCH = 10            # games per Java start-up
+BATCH = 20            # most games per Java start-up
+MIN_BATCH = 5         # fewest, unless the run itself is smaller
 GAME_TIMEOUT = 180    # seconds before a stuck game counts as a draw
 
 
@@ -54,6 +56,32 @@ def plan(opponents, games, batch=BATCH, weights=None):
     return out
 
 
+def pack(jobs, size):
+    """Group plan() output into Java start-ups of `size` games each: [[(opponent, n), ...], ...].
+    An opponent's games may be split across two start-ups; the order of plan() is kept."""
+    out, cur, room = [], [], size
+    for opp, n in jobs:
+        while n > 0:
+            k = min(n, room)
+            if cur and cur[-1][0] == opp:
+                cur[-1] = (opp, cur[-1][1] + k)
+            else:
+                cur.append((opp, k))
+            n -= k
+            room -= k
+            if room == 0:
+                out.append(cur)
+                cur, room = [], size
+    if cur:
+        out.append(cur)
+    return out
+
+
+def batch_size(games, instances):
+    """Games per Java start-up: enough to keep every instance busy, never more than BATCH."""
+    return max(1, min(BATCH, games, max(MIN_BATCH, math.ceil(games / max(1, instances)))))
+
+
 class Run:
     """One simulation run. Results stream to <out_dir>/<run_id>.jsonl as games finish."""
 
@@ -79,12 +107,22 @@ class Run:
         self.problems = []        # short reasons, shown to the user
 
     def _batch(self, java, forge_dir, opp, n, idx, attempt=1):
-        if self.stopping:   # queued batches after Stop: don't start them
+        """One Java start-up. `opp` is an opponent deck (playing `n` games), or a list of (opponent, games)."""
+        segs = [(Path(o), k) for o, k in opp] if isinstance(opp, list) else [(Path(opp), n)]
+        segs = [(o, k) for o, k in segs if k > 0]
+        n = sum(k for _, k in segs)
+        if self.stopping or not segs:   # queued batches after Stop: don't start them
             return []
         tmp = self.out_dir / f".{self.id}-{idx}-{attempt}.part"
         errf = self.out_dir / f".{self.id}-{idx}-{attempt}.err"
         seed = None if self.seed is None else self.seed + idx
-        cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), opp.resolve(), n, tmp.resolve(),
+        if len(segs) == 1:
+            target = segs[0][0].resolve()
+        else:
+            lst = self.out_dir / f".{self.id}-{idx}-{attempt}.opps"
+            lst.write_text("".join(f"{o.resolve()}\t{k}\n" for o, k in segs), encoding="utf-8")
+            target = f"@{lst.resolve()}"
+        cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), target, n, tmp.resolve(),
                             GAME_TIMEOUT, seed)
         flags = (0x08000000 | 0x00004000) if os.name == "nt" else 0   # no console window, below-normal priority
         err = open(errf, "w", encoding="utf-8", errors="replace")
@@ -100,7 +138,8 @@ class Run:
                     with self.lock:
                         self.done += 1
                 elif line.startswith("DECK_ERROR"):
-                    self.log(f"Forge couldn't read {self.deck.name} or {opp.name}")
+                    bad = line[len("DECK_ERROR"):].strip()
+                    self.log(f"Forge couldn't read {Path(bad).name if bad else self.deck.name + ' or ' + segs[0][0].name}")
             p.wait(timeout=n * GAME_TIMEOUT + 120)
         except subprocess.TimeoutExpired:
             p.kill()
@@ -108,22 +147,32 @@ class Run:
             with self.lock:
                 self.procs.discard(p)
             err.close()
-        games = []
+        games, got = [], [0] * len(segs)
         if tmp.exists():
-            for k, l in enumerate(tmp.read_text(encoding="utf-8").splitlines()):
+            for l in tmp.read_text(encoding="utf-8").splitlines():
                 try:
                     g = json.loads(l)
-                except ValueError:
+                    slot = int(g.pop("slot", 0))
+                    opp_path = segs[slot][0]
+                except (ValueError, IndexError, TypeError):
                     continue
+                k = got[slot]
+                got[slot] += 1
                 # "pair": which seeded slot this game came from, so runs with the same seed line up game by game
-                g.update(pair=f"{opp.name}:{idx}:{k}", seed=seed, run=self.id, deck_a=self.deck.name, label=self.label, format=self.fmt.key,
-                         ai=self.cfg.get("ai_profile", "Default"))
+                g.update(pair=f"{opp_path.name}:{idx}:{k}", seed=seed, run=self.id, deck_a=self.deck.name,
+                         label=self.label, format=self.fmt.key, ai=self.cfg.get("ai_profile", "Default"))
                 games.append(g)
             tmp.unlink()
+        for f in (self.out_dir / f".{self.id}-{idx}-{attempt}.opps",):
+            try:
+                f.unlink()
+            except OSError:
+                pass
         with self.lock, open(self.results, "a", encoding="utf-8") as f:
             for g in games:
                 f.write(json.dumps(g, separators=(",", ":")) + "\n")
-        short = n - len(games)
+        missing = [(o, k - got[i]) for i, (o, k) in enumerate(segs) if k - got[i] > 0]
+        short = sum(k for _, k in missing)
         if short > 0 and not self.stopping:
             # usually a busy PC: Java couldn't start or a game hung. Keep Forge's error output for diagnostics
             # and try the missing games once more before giving up on them.
@@ -133,13 +182,14 @@ class Run:
                 errf.replace(keep)
             except OSError:
                 pass
+            names = ", ".join(o.stem for o, _ in missing)
             if attempt == 1:
-                self.log(f"{short} game(s) vs {opp.stem} didn't finish; trying them again")
-                return games + self._batch(java, forge_dir, opp, short, idx + 10000, attempt=2)
+                self.log(f"{short} game(s) vs {names} didn't finish; trying them again")
+                return games + self._batch(java, forge_dir, missing, 0, idx + 10000, attempt=2)
             with self.lock:
                 self.missing += short
-                self.problems.append(f"{short} vs {opp.stem}")
-            self.log(f"{short} game(s) vs {opp.stem} couldn't be played (Forge's output is in {keep})")
+                self.problems += [f"{k} vs {o.stem}" for o, k in missing]
+            self.log(f"{short} game(s) vs {names} couldn't be played (Forge's output is in {keep})")
         else:
             try:
                 errf.unlink()
@@ -151,7 +201,8 @@ class Run:
         forge_dir = self.cfg.forge_dir
         java = forge.find_java(forge_dir, self.cfg.get("java"))
         forge.prepare(forge_dir, self.cfg.get("ai_profile", "Default"))
-        jobs = plan(self.opponents, self.games, weights=self.weights)
+        size = batch_size(self.games, self.instances)
+        jobs = pack(plan(self.opponents, self.games, batch=size, weights=self.weights), size)
         self.log(f"{self.games} games of {self.fmt.name}: {self.deck.stem} vs {len(self.opponents)} "
                  f"opponent deck(s), {self.instances} at a time")
         meta = {"run": self.id, "label": self.label, "deck": str(self.deck), "format": self.fmt.key,
@@ -170,7 +221,7 @@ class Run:
         t.start()
         try:
             with ThreadPoolExecutor(max_workers=self.instances) as ex:
-                futs = [ex.submit(self._batch, java, forge_dir, opp, n, i) for i, (opp, n) in enumerate(jobs)]
+                futs = [ex.submit(self._batch, java, forge_dir, segs, 0, i) for i, segs in enumerate(jobs)]
                 for fu in as_completed(futs):
                     all_games += fu.result()
         except KeyboardInterrupt:

@@ -261,3 +261,66 @@ def test_run_matchups_show_commander_names(tmp_path):
     assert out["aerith-gainsborough"]["opponent"] == "Aerith Gainsborough"
     assert out["aerith-gainsborough"]["commander"] == "Aerith Gainsborough"
     assert out["doctor-doom-king-of-latveria"]["opponent"] == "Doctor Doom King of Latveria"   # no deck file: tidied slug
+
+
+def test_share_sends_only_new_or_changed_rows(tmp_path, monkeypatch):
+    """Each share sends what the site doesn't have yet: a re-share with nothing new sends nothing."""
+    from brewbench import config, share
+    cfg = config.Config(tmp_path)
+    cfg.data.update(share_id="c1", share_key="k", share_sent_name=None, share_sent_public=False)
+    payload = {"matches": [{"match_key": "a", "result": "Win"}],
+               "sims": [{"run_id": "r", "opp_key": "o", "games": 10, "wins": 5}], "decks": []}
+    monkeypatch.setattr(share, "build_payload", lambda cfg, lists=False: payload)
+    sent = []
+    monkeypatch.setattr(share.Client, "upload", lambda self, p: sent.append(p) or {"matches": len(p["matches"]), "sims": len(p["sims"]), "decks": 0, "rejected": 0})
+    share.share_now(cfg)
+    assert len(sent[0]["matches"]) == 1 and len(sent[0]["sims"]) == 1
+    share.share_now(cfg)
+    assert len(sent) == 1                                   # nothing new: no upload at all
+    payload["sims"][0]["games"] = 20                        # a sim run that kept going
+    payload["matches"].append({"match_key": "b", "result": "Loss"})
+    share.share_now(cfg)
+    assert sent[1]["sims"][0]["games"] == 20 and [m["match_key"] for m in sent[1]["matches"]] == ["b"]
+
+
+def test_one_start_up_plays_several_opponents(tmp_path, monkeypatch):
+    """Short runs against a big gauntlet pack several opponents into one Java start-up (starting Forge is the
+    slow part). Games are credited to the right opponent, and only the missing ones are retried."""
+    import sys, textwrap
+    from brewbench import formats, runner
+    jobs = runner.pack(runner.plan(["a", "b", "c", "d", "e"], 25, batch=10), 10)
+    assert [sum(n for _, n in j) for j in jobs] == [10, 10, 5]
+    assert {o: sum(n for j in jobs for x, n in j if x == o) for o in "abcde"} == dict.fromkeys("abcde", 5)
+    assert runner.batch_size(200, 16) == 13 and runner.batch_size(2500, 16) == 20 and runner.batch_size(3, 16) == 3
+    fake = tmp_path / "fakeforge.py"
+    fake.write_text(textwrap.dedent('''
+        import json, sys, os
+        target, out, games = sys.argv[1], sys.argv[2], sys.argv[3]
+        opps = [l.split("\\t") for l in open(target[1:]).read().splitlines()] if target.startswith("@") else [[target, games]]
+        marker = os.path.join(os.path.dirname(out), "flaky.tried")
+        with open(out, "w") as f:
+            for slot, (path, n) in enumerate(opps):
+                for i in range(int(n)):
+                    if "flaky" in path and i == 1 and not os.path.exists(marker):
+                        open(marker, "w").close(); sys.exit(1)       # dies part-way through the second opponent
+                    f.write(json.dumps({"result": "Win", "deck_b": os.path.basename(path), "slot": slot}) + "\\n")
+                    f.flush(); print("GAME_DONE", flush=True)
+    '''))
+    calls = []
+    def cmd(java, forge_dir, fmt, deck, opp, n, out, timeout, seed):
+        calls.append(str(opp))
+        return [sys.executable, str(fake), str(opp), str(out), str(n)]
+    monkeypatch.setattr(runner.forge, "command", cmd)
+    cfg = Config(tmp_path / "home")
+    for name in ("ok", "flaky", "mine"):
+        (tmp_path / f"{name}.dck").write_text("[Main]\n60 Island\n")
+    r = runner.Run(cfg, formats.get("standard"), tmp_path / "mine.dck", [], 0, instances=1,
+                   out_dir=tmp_path / "res", log=lambda *a: None)
+    games = r._batch(sys.executable, tmp_path, [(tmp_path / "ok.dck", 3), (tmp_path / "flaky.dck", 3)], 0, 0)
+    assert calls[0].startswith("@") and len(calls) == 2              # one start-up for both, then one retry
+    per = {}
+    for g in games:
+        per[g["deck_b"]] = per.get(g["deck_b"], 0) + 1
+        assert "slot" not in g and g["pair"].startswith(g["deck_b"])
+    assert per == {"ok.dck": 3, "flaky.dck": 3} and r.missing == 0
+    assert not list((tmp_path / "res").glob(".*.opps"))
