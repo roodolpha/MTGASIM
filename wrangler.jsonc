@@ -1,7 +1,8 @@
-// The public site: static files in site/, plus worker/index.js for /download/*.
+// The public site: static files in site/, plus worker/index.js, which runs first for every request so pages at
+// real addresses (/meta/brawl) get their own title and preview, and unknown addresses get a real 404.
 {
   "name": "mtgasim",
   "main": "worker/index.js",
   "compatibility_date": "2025-09-01",
-  "assets": { "directory": "./site", "binding": "ASSETS", "run_worker_first": ["/download", "/download/*"] }
+  "assets": { "directory": "./site", "binding": "ASSETS", "run_worker_first": true }
 }

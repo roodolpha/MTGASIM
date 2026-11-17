@@ -21,7 +21,7 @@ const label = (deck, f) => (isBrawl(f) ? deck : NAMES[deck] || deck);
 const range = (r) => (r && r.ci95 ? `${Math.round(100 * Math.max(0, r.ci95[0]))}–${Math.round(100 * Math.min(1, r.ci95[1]))}%` : "");
 const mana = (c) => {
   const s = String(c || "").toUpperCase().replace(/[^WUBRGC]/g, "");
-  return s ? `<span class="mana" role="img" aria-label="${esc(s.split("").map((x) => ({ W: "white", U: "blue", B: "black", R: "red", G: "green", C: "colourless" }[x])).join(", "))}">${s.split("").map((x) => `<svg><use href="img/mana.svg#m-${x.toLowerCase()}"/></svg>`).join("")}</span>` : "";
+  return s ? `<span class="mana" role="img" aria-label="${esc(s.split("").map((x) => ({ W: "white", U: "blue", B: "black", R: "red", G: "green", C: "colourless" }[x])).join(", "))}">${s.split("").map((x) => `<svg><use href="/img/mana.svg#m-${x.toLowerCase()}"/></svg>`).join("")}</span>` : "";
 };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const day = (iso) => { const d = new Date(iso + "T12:00:00Z"); return isNaN(d) ? iso : `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
@@ -104,7 +104,7 @@ let FMT = "brawl";
 try { FMT = localStorage.getItem("fmt") || "brawl"; } catch (e) {}
 function setFmt(f) { if (FORMATS.some((x) => x[0] === f)) { FMT = f; try { localStorage.setItem("fmt", f); } catch (e) {} } }
 const fmtPicker = (base) => `<label class="fmt">Format <select id="fmt">${FORMATS.map(([k, n]) => `<option value="${k}"${k === FMT ? " selected" : ""}>${n}</option>`).join("")}</select></label>`;
-function bindFmt(base) { const s = $("#fmt"); if (s) s.onchange = () => { setFmt(s.value); location.hash = `#/${base}/${s.value}`; }; }
+function bindFmt(base) { const s = $("#fmt"); if (s) s.onchange = () => { setFmt(s.value); go(`/${base === "home" ? "home" : base}/${s.value}`); }; }
 
 function title(t) { document.title = t ? `${t} | Brewbench` : "Brewbench: play your Arena deck before you craft"; }
 
@@ -132,7 +132,7 @@ async function home() {
       <h1>Play your deck a few thousand times before you craft the upgrade.</h1>
       <p class="lede">Brewbench plays your MTG Arena deck against the commanders and decks you actually meet on ladder, on your own PC. Swap a card, run both versions on the same shuffles, and see if it really helped.</p>
       <div class="actions">${downloadButtons()}</div>
-      <p class="fine">Free and open source. It only reads Arena's log file and never touches the game. <a href="#/how">How it works</a></p>
+      <p class="fine">Free and open source. It only reads Arena's log file and never touches the game. <a href="/how">How it works</a></p>
     </div>
     <div class="swap" aria-label="A real Test a change result">
       <div class="pair">
@@ -145,7 +145,7 @@ async function home() {
   </section>
   <section class="block">
     <header><div><h2>${isBrawl(FMT) ? "Commanders" : "Decks"} on the ladder</h2></div>${fmtPicker("home")}</header>
-    ${decks.length ? `<div class="cards">${decks.slice(0, 11).map((d) => `<a href="#/meta/${FMT}">
+    ${decks.length ? `<div class="cards">${decks.slice(0, 11).map((d) => `<a href="/meta/${FMT}">
         ${isBrawl(FMT) ? cardImg(d.deck) : `<div class="cardimg ph" style="${archetypeBg(d.colours || d.deck)}">${mana(d.colours || d.deck)}</div>`}
         <div class="nm">${esc(label(d.deck, FMT))}</div>
         <div class="st"><b>${pc(d.real.win_rate)}</b> won on ladder${d.sim ? `, <span class="sim">${pc(d.sim.win_rate)}</span> in the sim` : ""}<br>${games(d.real.games)}</div></a>`).join("")}
@@ -153,7 +153,7 @@ async function home() {
       <p class="note">${num(meta.real_games)} ladder games in the last 30 days, shared by ${sharing === 1 ? "one player" : sharing ? num(sharing) + " players" : "players"} so far. The more people share, the more this tells you.</p>`
     : `<p class="empty">Nobody has shared ${esc(fmtName(FMT))} games yet. Play ${esc(fmtName(FMT))} with sharing turned on in the app and your decks will be the first here.</p>`}
   </section>
-  ${lb.players.length ? `<section class="block"><header><h2>Players</h2><a href="#/players/${FMT}">Full table</a></header>${playerTable(lb.players.slice(0, 6), FMT, true)}</section>` : ""}
+  ${lb.players.length ? `<section class="block"><header><h2>Players</h2><a href="/players/${FMT}">Full table</a></header>${playerTable(lb.players.slice(0, 6), FMT, true)}</section>` : ""}
   <section class="block"><header><div><h2>Questions, bugs, results?</h2><p>The Discord is where updates land first and where to ask if a number looks wrong.</p></div><a class="btn" href="${DISCORD}" rel="noopener">Join the Discord</a></header></section>`;
   bindFmt("home"); bindDownload();
   withCards([PROOF.out, PROOF.in, ...(isBrawl(FMT) ? [...decks.slice(0, 11).map((d) => d.deck), ...lb.players.slice(0, 6).map((p) => p.main_deck)] : [])]);
@@ -169,7 +169,7 @@ function playerTable(rows, f, compact) {
   if (!rows.length) return '<p class="empty">Nobody public with enough games yet.</p>';
   return `<div class="tablewrap"><table><thead><tr><th class="n">#</th><th>Player</th><th class="opt">Main deck</th><th class="n">Won</th><th class="opt">Likely true rate</th><th class="n">Games</th></tr></thead><tbody>${rows.map((r) => `<tr>
    <td class="rank n">${r.pos}</td>
-   <td><a href="#/player/${encodeURIComponent(r.name)}">${esc(r.name)}</a></td>
+   <td><a href="/player/${encodeURIComponent(r.name)}">${esc(r.name)}</a></td>
    <td class="opt">${deckCell(r.main_deck, r.colours, f)}</td>
    <td class="n">${pc(r.win_rate)}</td><td class="opt range">${range(r)}</td>
    <td class="n">${num(r.games)}</td></tr>`).join("")}</tbody></table></div>`;
@@ -185,7 +185,7 @@ async function players(m) {
     <div id="lb">${playerTable(lb.players, FMT)}</div>`;
   const q = $("#q");
   q.oninput = () => { const s = q.value.trim().toLowerCase(); $("#lb").innerHTML = playerTable(lb.players.filter((p) => p.name.toLowerCase().includes(s)), FMT); };
-  $("#f").onsubmit = (e) => { e.preventDefault(); if (q.value.trim()) location.hash = "#/player/" + encodeURIComponent(q.value.trim()); };
+  $("#f").onsubmit = (e) => { e.preventDefault(); if (q.value.trim()) go("/player/" + encodeURIComponent(q.value.trim())); };
   bindFmt("players");
   if (isBrawl(FMT)) withCards(lb.players.map((p) => p.main_deck));
 }
@@ -246,7 +246,7 @@ async function playerPage(m) {
   let p;
   try { p = await get(`/v1/players/${encodeURIComponent(name)}`); } catch (e) {
     if (e.status !== 404) throw e;
-    $("#app").innerHTML = `<div class="pagehead"><h1>No public player called ${esc(name)}</h1><p>Names are exact, and players who share anonymously don't have a page. <a href="#/players">See everyone who's public</a>.</p></div>`; return;
+    $("#app").innerHTML = `<div class="pagehead"><h1>No public player called ${esc(name)}</h1><p>Names are exact, and players who share anonymously don't have a page. <a href="/players">See everyone who's public</a>.</p></div>`; return;
   }
   // one row per commander (or colours) and format, however many versions of the list
   const groups = {};
@@ -299,7 +299,7 @@ function howPage() {
     <li><h3>Tick one setting in Arena</h3><p>Options, then Account, then Detailed Logs (Plugin Support), then restart Arena. Without it, Arena doesn't write your decks or games to its log, so there's nothing for Brewbench to read. You can still paste a deck from Arena's Export button.</p></li>
     <li><h3>Your decks and opponents appear</h3><p>Brewbench imports your Arena decks, and builds an opponent for each commander or archetype you've faced, weighted by how often you meet them.</p></li>
     <li><h3>Test a change</h3><p>Swap a card and both versions play the same games: same shuffles, same opponents. If one does better, it's the cards, not luck. If the gap is too small to trust, it says so.</p></li>
-    <li><h3>Share, if you like</h3><p>Sharing is off until you turn it on. Shared games feed the numbers on this site. You're anonymous unless you pick a name. <a href="#/privacy">What's sent</a></p></li>
+    <li><h3>Share, if you like</h3><p>Sharing is off until you turn it on. Shared games feed the numbers on this site. You're anonymous unless you pick a name. <a href="/privacy">What's sent</a></p></li>
   </ol>
   <section class="block" style="margin-top:48px"><h2 style="margin-bottom:14px">What it can't do</h2><div class="prose">
     <p>Forge's AI plays well but not perfectly, and it misplays some cards. Trust comparisons ("this version beats that one") more than single numbers ("this is a 57% deck").</p>
@@ -311,7 +311,7 @@ function howPage() {
 
 async function privacyPage() {
   title("Privacy");
-  const r = await fetch("privacy.md").catch(() => null);
+  const r = await fetch("/privacy.md").catch(() => null);
   const md = r && r.ok ? await r.text() : "See docs/PRIVACY.md in the source code.";
   const inline = (s) => s.replace(/\[(.+?)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>").replace(/`(.+?)`/g, "<code>$1</code>");
@@ -332,15 +332,18 @@ function apiPage() {
 
 function notFound() {
   title("Page not found");
-  $("#app").innerHTML = `<div class="pagehead"><h1>There's no page here</h1><p>Try <a href="#/meta">commanders and decks</a>, <a href="#/players">players</a> or the <a href="#/">home page</a>.</p></div>`;
+  $("#app").innerHTML = `<div class="pagehead"><h1>There's no page here</h1><p>Try <a href="/meta">commanders and decks</a>, <a href="/players">players</a> or the <a href="/">home page</a>.</p></div>`;
 }
 
-const routes = [[/^#\/?$/, home], [/^#\/home(?:\/(\w+))?$/, (m) => { if (m[1]) setFmt(m[1]); return home(); }],
-  [/^#\/meta(?:\/(\w+))?$/, metaPage], [/^#\/(?:players|leaderboard)(?:\/(\w+))?$/, players],
-  [/^#\/player\/(.+)$/, playerPage], [/^#\/how$/, howPage], [/^#\/api$/, apiPage], [/^#\/privacy$/, privacyPage]];
+const routes = [[/^\/$/, home], [/^\/home(?:\/(\w+))?\/?$/, (m) => { if (m[1]) setFmt(m[1]); return home(); }],
+  [/^\/meta(?:\/(\w+))?\/?$/, metaPage], [/^\/(?:players|leaderboard)(?:\/(\w+))?\/?$/, players],
+  [/^\/player\/(.+)$/, playerPage], [/^\/how\/?$/, howPage], [/^\/api\/?$/, apiPage], [/^\/privacy\/?$/, privacyPage]];
+// real addresses (/meta/brawl), so search engines and link previews see each page; old #/ links still work
+function go(path) { if (path !== location.pathname) history.pushState(null, "", path); route(); }
 async function route() {
-  const h = location.hash || "#/";
-  const nav = { meta: "#/meta", player: "#/players", players: "#/players", leaderboard: "#/players", how: "#/how" }[(h.split("/")[1] || "")];
+  if (location.hash.startsWith("#/")) history.replaceState(null, "", location.hash.slice(1) || "/");
+  const h = location.pathname || "/";
+  const nav = { meta: "/meta", player: "/players", players: "/players", leaderboard: "/players", how: "/how" }[(h.split("/")[1] || "")];
   document.querySelectorAll("nav.main a").forEach((a) => (a.getAttribute("href") === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
   if (PREV) PREV.remove(), (PREV = null);
   const hit = routes.find(([re]) => re.test(h));
@@ -355,7 +358,16 @@ async function route() {
   }
   window.scrollTo(0, 0);
 }
+// links within the site change the page without a reload
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest("a[href^='/']");
+  if (!a || a.target || a.hasAttribute("download") || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+  const href = a.getAttribute("href");
+  if (/^\/(download|fonts|img)\b|\.\w+$/.test(href)) return;
+  e.preventDefault(); go(href);
+});
 document.documentElement.classList.add("os-" + (OS === "phone" ? "other" : OS));
 document.querySelectorAll("[data-download]").forEach((a) => (a.href = OS === "mac" ? "/download/mac" : "/download/windows"));
-window.addEventListener("hashchange", route);
+window.addEventListener("popstate", route);
+window.addEventListener("hashchange", () => { if (location.hash.startsWith("#/")) route(); });
 route();

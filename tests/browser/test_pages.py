@@ -62,7 +62,7 @@ def site_url(tmp_path_factory):
     cfg = (site / "config.js").read_text()
     (site / "config.js").write_text(re.sub(r'\|\| "https://[^"]+"', f'|| "http://127.0.0.1:{api}"', cfg, count=1))
     procs = [subprocess.Popen([sys.executable, str(Path(__file__).parent / "mock_api.py"), str(api)]),
-             subprocess.Popen([sys.executable, "-m", "http.server", str(web), "--bind", "127.0.0.1"], cwd=site,
+             subprocess.Popen([sys.executable, str(Path(__file__).parent / "site_server.py"), str(web), str(site)],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)]
     wait(api); wait(web)
     yield f"http://127.0.0.1:{web}/"
@@ -99,9 +99,11 @@ def test_app_pages(browser, app_url, path, expect):
     visit(browser, app_url + path, expect)
 
 
-SITE_PAGES = [("#/", ["Play your deck", "Commanders on the ladder", "Download for Windows"]), ("#/meta", ["Commanders", "Matchups"]),
-              ("#/leaderboard", ["Players"]), ("#/player/someone", ["Win rate by week"]),
-              ("#/players", ["Players"]), ("#/how", ["How it works", "Detailed Logs"]), ("#/api", ["API"]), ("admin.html", ["Admin", "Password"])]
+SITE_PAGES = [("", ["Play your deck", "Commanders on the ladder", "Download for Windows"]), ("meta/brawl", ["Commanders", "Matchups"]),
+              ("leaderboard", ["Players"]), ("player/someone", ["Win rate by week"]),
+              ("players", ["Players"]), ("how", ["How it works", "Detailed Logs"]), ("api", ["API"]), ("admin.html", ["Admin", "Password"]),
+              ("#/meta", ["Commanders", "Matchups"]),       # old-style links still work
+              ("no-such-page", ["no page here"])]
 
 
 @pytest.mark.parametrize("path,expect", SITE_PAGES)
@@ -109,6 +111,20 @@ def test_site_pages(browser, site_url, path, expect):
     visit(browser, site_url + path, expect)
 
 
-@pytest.mark.parametrize("path", ["#/", "#/meta", "#/leaderboard"])
+@pytest.mark.parametrize("path", ["", "meta/brawl", "leaderboard"])
 def test_site_fits_a_phone(browser, site_url, path):
     assert visit(browser, site_url + path, [], width=390) <= 392, "page wider than the phone (see printed elements)"
+
+
+def test_site_links_change_page_without_reload(browser, site_url):
+    page = browser.new_page()
+    page.goto(site_url)
+    page.wait_for_selector("text=Commanders on the ladder")
+    page.evaluate("window.__stay = 1")
+    page.click("nav.main >> text=How it works")
+    page.wait_for_selector("text=Detailed Logs")
+    assert page.url.endswith("/how") and page.evaluate("window.__stay") == 1
+    assert page.title() == "How it works | Brewbench"
+    page.go_back()
+    page.wait_for_selector("text=Commanders on the ladder")
+    page.close()
