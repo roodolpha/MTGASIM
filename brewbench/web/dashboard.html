@@ -212,6 +212,22 @@ async function runPage(id) {
 let DFMT = '', OPPFMT = '';
 // ---- "Did this swap help?": your deck vs an edited copy, on the same shuffles and opponents
 let IDEAS_TYPE = '', IDEAS = {};
+// image addresses for many cards in a few batched Scryfall calls (one call per card trips Scryfall's rate limit)
+const IMGS = {};
+async function cardImages(names) {
+  const want = [...new Set(names)].filter(n => !(n in IMGS));
+  for (let i = 0; i < want.length; i += 75) {
+    try {
+      const r = await fetch('https://api.scryfall.com/cards/collection', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({identifiers: want.slice(i, i + 75).map(name => ({name}))})});
+      for (const c of (await r.json()).data || []) {
+        const f = c.image_uris ? c : (c.card_faces || [])[0] || {}, u = f.image_uris || {};
+        const v = {art: u.art_crop, normal: u.normal};
+        IMGS[c.name] = v; for (const face of c.card_faces || []) IMGS[face.name] = IMGS[face.name] || v;
+      }
+    } catch (e) { /* names still show without pictures */ }
+  }
+}
 async function ideasPage(id) {
   const d = (DECKS || []).find(x => x.id === id) || {};
   if (IDEAS.id !== id) $('#main').innerHTML = `<div class="plain"><a href="#decks" class="dim">← Decks</a><h1 class="page" style="margin-top:8px">Card ideas for ${esc(d.name || 'this deck')}</h1>
@@ -230,11 +246,19 @@ async function ideasPage(id) {
     <p class="dim" style="margin:0;max-width:70ch">Cards that EDHREC's ${r.decks.toLocaleString()} decks with ${esc(r.commander)} often play and this deck doesn't. EDHREC counts paper Commander decks, so ${r.checked ? `this list only keeps cards legal in ${esc(fmtName)} on Arena${r.left_out ? ` (${r.left_out} others left out)` : ''}` : `<b>legality on Arena couldn't be checked just now</b>, so some of these may not be on Arena`}.</p>`) + `
   <div class="tabs" role="tablist" aria-label="Card type"><button role="tab" aria-selected="${!IDEAS_TYPE}" data-it="">All ${r.cards.length}</button>${types.map(t => `<button role="tab" aria-selected="${t === IDEAS_TYPE}" data-it="${esc(t)}">${esc(t)} ${r.cards.filter(c => c.category === t).length}</button>`).join('')}</div>
   <div class="panel"><table><thead><tr><th>Card</th><th>Type</th><th class="n" title="Share of EDHREC's decks for this commander that could play the card and do">In decks</th><th class="n" title="How much more often the card appears with this commander than in other decks of the same colours">Synergy</th></tr></thead><tbody>
-  ${rows.map(c => `<tr><td><a href="https://scryfall.com/search?q=${encodeURIComponent('!"' + c.name + '"')}" target="_blank" rel="noopener">${esc(c.name)}</a>${c.tags.includes('new') ? ' <span class="dim" style="font-size:12px">new</span>' : ''}</td>
+  ${rows.map(c => `<tr><td><div style="display:flex;align-items:center;gap:10px"><img class="idea-art" alt="" loading="lazy" width="44" height="32" data-full="${esc(c.name)}"${IMGS[c.name] ? ` src="${esc(IMGS[c.name].art)}"` : ''}><a href="https://scryfall.com/search?q=${encodeURIComponent('!"' + c.name + '"')}" target="_blank" rel="noopener" style="text-decoration:none;font-weight:600" data-full="${esc(c.name)}">${esc(c.name)}</a>${c.tags.includes('new') ? ' <span class="dim" style="font-size:12px">new</span>' : ''}</div></td>
     <td class="dim">${esc(c.category)}</td><td class="n">${c.share == null ? '–' : Math.round(c.share * 100) + '%'} <span class="dim" style="font-size:12px">${c.decks.toLocaleString()}</span></td><td class="n">${syn(c.synergy)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nothing here.</td></tr>'}
   </tbody></table></div>
   <p class="dim" style="font-size:13px;margin-top:12px">Numbers from <a href="${esc(r.url)}" target="_blank" rel="noopener">EDHREC</a>, refreshed once a day. They show what other players run, not what will win: to see if a card helps your list, try it with Test a change.</p>`;
   document.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { IDEAS_TYPE = b.dataset.it; ideasPage(id); });
+  cardImages(rows.map(c => c.name)).then(() => $('#main').querySelectorAll('img.idea-art:not([src])').forEach(im => { const v = IMGS[im.dataset.full]; if (v && v.art) im.src = v.art; }));
+  let pv;
+  $('#main').querySelectorAll('[data-full]').forEach(el => {
+    el.onmouseenter = () => { pv = pv || Object.assign(document.createElement('img'), {className: 'card-preview', alt: ''}); document.body.appendChild(pv);
+      if (!IMGS[el.dataset.full]) return; pv.src = IMGS[el.dataset.full].normal;
+      const r = el.getBoundingClientRect(); pv.style.left = Math.min(innerWidth - 260, r.right + 16) + 'px'; pv.style.top = Math.max(8, Math.min(innerHeight - 350, r.top - 120)) + 'px'; };
+    el.onmouseleave = () => pv && pv.remove();
+  });
 }
 async function swapPage(pick) {
   DECKS = await api('/api/decks');

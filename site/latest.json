@@ -1,6 +1,6 @@
 {
- "version": "0.7.5",
+ "version": "0.7.6",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Brewbench reopens reliably after updating itself. Sim results name each opponent's commander, with its art."
+ "notes": "Card ideas show each card's art, and the full card when you hover over it."
 }
