@@ -1,6 +1,6 @@
 {
- "version": "0.7.6",
+ "version": "0.7.7",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Card ideas show each card's art, and the full card when you hover over it."
+ "notes": "Sims run faster, especially short tests against a big gauntlet."
 }
