@@ -279,7 +279,7 @@ async function swapPage(pick) {
   } else if (sw.state === 'error') result = `<p class="err">${esc(sw.error)}</p>`;
   else if (sw.state === 'stopped') result = '<p class="dim">Stopped.</p>';
   $('#main').innerHTML = `<div class="plain"><button class="back" id="swback">← All sims</button><h1 class="page">Test a change</h1>
-    <p class="dim" style="margin:0">Edit a copy of your deck and both versions play the same games: same shuffles, same opponents. Any difference comes from the cards, not luck.</p></div>
+    <p class="dim" style="margin:0">Edit a copy of your deck and both versions play the same games: same shuffles, same opponents. Any difference comes from the cards, not luck. Commanders you meet more often on the ladder get more of the games.</p></div>
     ${running ? `<section class="panel"><b>Testing a change to ${esc(sw.deck)}</b><p class="dim" style="margin:6px 0 10px">${sw.waiting ? 'Waiting for another test on this PC to finish, then it starts by itself.' : `Playing ${sw.phase === 'A' ? 'your deck' : 'the changed version'}: ${sw.done}/${2 * sw.games} games.`}</p>${changes}<p style="margin:10px 0 0"><button class="btn stop" id="swstop">Stop</button></p></section>` : result}
     <section class="panel"><div class="form" style="margin-bottom:12px">
       <label>Deck<select id="swdeck">${DECKS.map(d => `<option value="${esc(d.id)}" ${d.id === cur.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></label>

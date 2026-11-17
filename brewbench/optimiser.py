@@ -86,6 +86,7 @@ class Optimiser:
         path = deck.save(self.dir / "variants" / f"{deck_hash(deck)}.dck")
         r = runner.Run(self.cfg, self.fmt, path, opps, games, self.instances, seed, f"{self.slug}:{tag}",
                        out_dir=self.dir / "runs", log=lambda *_: None)
+        r.weights = runner.faced_weights(opps)   # play opponents as often as you actually meet them
         self._current = r
         try:
             games_ = r.start()

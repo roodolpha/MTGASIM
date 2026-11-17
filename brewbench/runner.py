@@ -18,6 +18,8 @@ from . import forge
 BATCH = 20            # most games per Java start-up
 MIN_BATCH = 5         # fewest, unless the run itself is smaller
 GAME_TIMEOUT = 180    # seconds before a stuck game counts as a draw
+SETTLED = 20          # seconds a Java process must have run before its death can count as "closed outside"
+CLOSE_WINDOW = 6      # seconds: this many Java processes failing this close together means they were closed
 
 
 def plan(opponents, games, batch=BATCH, weights=None):
@@ -120,6 +122,19 @@ def pack(jobs, size):
     return out
 
 
+def faced_weights(opponents):
+    """How often you've faced each opponent deck (its Weight=), for plan(); None if none are known,
+    so the games are spread evenly instead."""
+    from . import decks as D
+    w = []
+    for o in opponents:
+        try:
+            w.append(D.read_dck(o).weight or 0)
+        except OSError:
+            w.append(0)
+    return w if any(w) else None
+
+
 def batch_size(games, instances):
     """Games per Java start-up: enough to keep every instance busy, never more than BATCH."""
     return max(1, min(BATCH, games, max(MIN_BATCH, math.ceil(games / max(1, instances)))))
@@ -148,6 +163,7 @@ class Run:
         self.procs = set()
         self.missing = 0          # games that never got played (Forge failed to start, crashed or timed out)
         self.problems = []        # short reasons, shown to the user
+        self._fails = []          # when batches came up short, to tell a mass close-down from a crash
 
     def _batch(self, java, forge_dir, opp, n, idx, attempt=1):
         """One Java start-up. `opp` is an opponent deck (playing `n` games), or a list of (opponent, games)."""
@@ -168,6 +184,7 @@ class Run:
         cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), target, n, tmp.resolve(),
                             GAME_TIMEOUT, seed)
         flags = (0x08000000 | 0x00004000) if os.name == "nt" else 0   # no console window, below-normal priority
+        t0 = time.time()
         err = open(errf, "w", encoding="utf-8", errors="replace")
         p = subprocess.Popen(cmd, cwd=forge_dir, stdout=subprocess.PIPE, stderr=err,
                              text=True, creationflags=flags)
@@ -226,6 +243,12 @@ class Run:
             except OSError:
                 pass
             names = ", ".join(o.stem for o, _ in missing)
+            if attempt == 1 and self._closed_outside(time.time() - t0):
+                with self.lock:
+                    self.missing += short
+                    if "Forge was closed outside Brewbench, so the run stopped" not in self.problems:
+                        self.problems.insert(0, "Forge was closed outside Brewbench, so the run stopped")
+                return games
             if attempt == 1:
                 self.log(f"{short} game(s) vs {names} didn't finish; trying them again")
                 return games + self._batch(java, forge_dir, missing, 0, idx + 10000, attempt=2)
@@ -239,6 +262,22 @@ class Run:
             except OSError:
                 pass
         return games
+
+    def _closed_outside(self, ran_for):
+        """True when several of this run's Java processes died together after running a while (e.g. ended in
+        Task Manager): then the run stops instead of starting them all again. A single crash, or Java failing
+        to start on a busy PC, still gets its retry."""
+        if ran_for < SETTLED:
+            return False
+        now = time.time()
+        with self.lock:
+            self._fails.append(now)
+        time.sleep(CLOSE_WINDOW / 3)       # let the others that went down at the same moment report in
+        with self.lock:
+            recent = sum(1 for t in self._fails if now - CLOSE_WINDOW <= t <= now + CLOSE_WINDOW)
+            if recent >= min(3, max(1, self.instances)) and self.instances > 1:
+                self.stopping = True
+        return self.stopping
 
     def start(self, progress=None, waiting=None):
         """Plays the run. If another test is already running on this PC, waits for it first

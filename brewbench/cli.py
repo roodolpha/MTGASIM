@@ -221,18 +221,19 @@ def cmd_gauntlet_list(cfg, a):
 
 
 def cmd_gauntlet_from_log(cfg, a):
-    from . import arena_log, cards
-    logs = arena_log.find_logs(cfg.get("arena_log"))
-    if not logs:
-        raise SystemExit("Couldn't find Arena's Player.log.")
+    """Same builder as the app: one deck per commander you've faced, weighted by how often you've faced it."""
+    fmt = formats.get("brawl")
     print("Building one deck per commander you've faced (takes a while: it looks up each list)...")
     use_edhrec = bool(a.edhrec or cfg.get("edhrec"))
     if not use_edhrec:
         print("(EDHREC top-up is off: decks only hold cards you've seen, plus basics. "
               "Add --edhrec, or turn it on in Settings, for fuller lists.)")
-    made = gauntlet.from_log(arena_log.read_all(logs), cards.CardBook(cfg.cache_dir / "cards.json"),
-                             cfg.gauntlet_dir("brawl"), forge.card_names(cfg.forge_dir), use_edhrec=use_edhrec)
-    print(f"{len(made)} Brawl opponent deck(s) in {cfg.gauntlet_dir('brawl')}")
+    made, skipped = gauntlet.build_faced(cfg, fmt, forge.card_names(cfg.forge_dir), use_edhrec=use_edhrec,
+                                         progress=lambda i, n, c: print(f"\r  {i}/{n} {c[:40]:<40}", end="", flush=True))
+    print(f"\nAdded {len(made)} deck(s); every deck's 'times faced' is up to date.")
+    if skipped:
+        print("Skipped: " + ", ".join(skipped[:10]) + (" ..." if len(skipped) > 10 else ""))
+    print(f"{len(gauntlet.list_decks(cfg.gauntlet_dir('brawl')))} Brawl opponent deck(s) in {cfg.gauntlet_dir('brawl')}")
 
 
 def _progress(done, total):

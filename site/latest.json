@@ -1,6 +1,6 @@
 {
- "version": "0.7.8",
+ "version": "0.7.9",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Starting a second test while one is running now queues it, so they no longer slow each other down."
+ "notes": "Test a change and the optimiser now play the commanders you meet most more often, so results match your ladder."
 }

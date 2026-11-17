@@ -126,34 +126,6 @@ def brawl_deck(commander, seen, forge_names, size=99, use_edhrec=True):
     return deck
 
 
-def from_log(reader, book, folder, forge_names, events=("Brawl",), log=print, use_edhrec=False):
-    """One deck per opposing commander in your Arena log (Brawl events only)."""
-    seen, faced = {}, Counter()
-    for m in reader.matches.values():
-        if not any(e.lower() in (m.event or "").lower() for e in events):
-            continue
-        for g in m.opp_commanders:
-            c = book.name(g)
-            if not c:
-                continue
-            c = D.clean_name(c)
-            faced[c] += 1
-            seen.setdefault(c, Counter()).update(
-                D.clean_name(n) for n in (book.name(x) for x in m.opp_seen) if n)
-    book.save()
-    made = []
-    for c, n in faced.most_common():
-        if c not in forge_names:
-            log(f"  skipped {c}: Forge doesn't have it")
-            continue
-        deck = brawl_deck(c, [x for x, _ in seen[c].most_common()], forge_names, use_edhrec=use_edhrec)
-        path = deck.save(Path(folder) / f"{slug(c)}.dck")
-        made.append((path, n))
-        log(f"  {c} (faced {n}x)")
-    return made
-
-
-# ---------------------------------------------------------------- for the app (Decks > Opponents)
 def describe(folder):
     """[{id, name, commander, cards}] for the decks in a gauntlet folder."""
     out = []

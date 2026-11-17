@@ -141,6 +141,7 @@ def start_swap(cfg, fmt, deck_path, list_b, games, opps):
                 SWAP["phase"] = phase
                 r = runner.Run(cfg, fmt, path, opps, games, seed=seed, label=label, out_dir=folder / "results",
                                log=lambda *_: None)
+                r.weights = runner.faced_weights(opps)   # as often as you actually meet them
                 _SWAP_RUN["r"] = r
                 res.append(r.start(lambda d, t: SWAP.update(done=d + (games if phase == "B" else 0)),
                                    waiting=lambda w: SWAP.update(waiting=w)))

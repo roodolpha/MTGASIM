@@ -345,3 +345,36 @@ def test_second_test_waits_for_the_first(tmp_path):
     t.join(5)
     assert seen == [True, False] and ran == [1]
     assert runner.SimLock(cfg.home / "sim.lock").acquire()   # released after the run
+
+
+def test_forge_closed_outside_stops_instead_of_retrying(tmp_path, monkeypatch):
+    """Ending every Java process in Task Manager should stop the run, not start them all again;
+    a lone failure, or Java failing to start, still gets its retry."""
+    import threading
+    from brewbench import formats, runner
+    monkeypatch.setattr(runner, "SETTLED", 0)
+    monkeypatch.setattr(runner, "CLOSE_WINDOW", 0.6)
+    cfg = Config(tmp_path / "home")
+    r = runner.Run(cfg, formats.get("standard"), tmp_path / "mine.dck", [], 0, instances=4,
+                   out_dir=tmp_path / "res", log=lambda *a: None)
+    assert r._closed_outside(30) is False and not r.stopping       # one on its own: retry it
+    out = []
+    ts = [threading.Thread(target=lambda: out.append(r._closed_outside(30))) for _ in range(3)]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    assert r.stopping and any(out)                                  # several together: closed outside
+    r2 = runner.Run(cfg, formats.get("standard"), tmp_path / "mine.dck", [], 0, instances=4,
+                    out_dir=tmp_path / "res", log=lambda *a: None)
+    monkeypatch.setattr(runner, "SETTLED", 20)
+    assert r2._closed_outside(2) is False and not r2.stopping       # died at start-up: a busy PC, retry
+
+
+def test_swap_and_optimiser_weight_by_times_faced(tmp_path):
+    from brewbench import runner
+    from collections import Counter
+    for n, w in (("a", 6), ("b", 3), ("c", 0)):
+        D.Deck(name=n, main=Counter({"Island": 60}), weight=w).save(tmp_path / f"{n}.dck")
+    opps = [tmp_path / f"{n}.dck" for n in "abc"]
+    assert runner.faced_weights(opps) == [6, 3, 0]
+    for n in "abc":
+        D.Deck(name=n, main=Counter({"Island": 60})).save(tmp_path / f"{n}.dck")
+    assert runner.faced_weights(opps) is None                      # none known: spread evenly
