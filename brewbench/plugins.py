@@ -8,6 +8,7 @@ loaded when the folder doesn't exist, which is the case for everyone who hasn't 
         api.add_route("/my/page", lambda query: (200, "text/html; charset=utf-8", b"<p>hello</p>"))
         api.on_tracker(lambda parser, engine, cards: ...)   # after each read of Arena's log
         api.open_window("Title", "/my/page", width=360, height=240)   # only in the app window build
+        api.add_nav("My page", "/my/page")                               # a link in the app's menu
 
 A plugin that raises is skipped and logged; it never stops Brewbench.
 """
@@ -16,6 +17,7 @@ import traceback
 from pathlib import Path
 
 ROUTES = {}          # path -> fn(query dict) -> (status, content type, bytes)
+NAV = []             # [{"label", "path"}] extra links in the app's menu
 TRACKER_HOOKS = []   # fn(parser, engine module, cards)
 APP = {"webview": None, "port": None}
 _loaded = []
@@ -31,6 +33,10 @@ class API:
 
     def add_route(self, path, fn):
         ROUTES[path] = fn
+
+    def add_nav(self, label, path):
+        """A link in the app's top menu to one of this plugin's pages."""
+        NAV.append({"label": label, "path": path})
 
     def on_tracker(self, fn):
         TRACKER_HOOKS.append(fn)

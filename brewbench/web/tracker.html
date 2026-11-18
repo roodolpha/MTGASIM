@@ -2900,5 +2900,21 @@ fetch('/api/update').then(r => r.json()).then(u => {
   tick();
 })();
 </script>
+<script>
+// links from your own add-ons, if any (Brewbench ships none)
+fetch('/api/plugins').then(r => r.json()).then(d => {
+  if (!(d.nav || []).length) return;
+  let tries = 0;
+  const add = () => {
+    const nav = document.querySelector('[aria-label="Main"]');
+    if (!nav) { if (tries++ < 40) setTimeout(add, 250); return; }
+    if (nav.querySelector('a[data-plugin]')) return;
+    const before = [...nav.querySelectorAll('a')].find(a => /settings/i.test(a.getAttribute('href')));
+    d.nav.forEach(x => { const a = document.createElement('a'); a.href = x.path; a.textContent = x.label; a.dataset.plugin = '1';
+      if (location.pathname === x.path) a.setAttribute('aria-current', 'page'); nav.insertBefore(a, before || null); });
+  };
+  add();
+}).catch(() => {});
+</script>
 </body>
 </html>

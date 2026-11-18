@@ -542,6 +542,9 @@ def make_handler(cfg, jobs):
                 return self._send(200, diagnostics_zip(cfg), "application/zip")
             if path == "/api/settings":
                 return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec", "crash_reports")})
+            if path == "/api/plugins":     # links your own add-ons put in the menu (none unless you have some)
+                from . import plugins
+                return self._send(200, {"nav": plugins.NAV})
             if path == "/api/status":
                 return self._send(200, {"version": __version__, "ai": cfg.get("ai_profile", "Default"),
                                         "formats": [{"key": f.key, "name": f.name} for f in formats.FORMATS.values()],

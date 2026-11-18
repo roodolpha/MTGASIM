@@ -434,7 +434,8 @@ def test_plugins_load_only_from_your_own_folder(tmp_path):
         "seen = []\n"
         "def setup(api):\n"
         "    api.add_route('/x/hello', lambda q: (200, 'text/plain', b'hi ' + q.get('n', '').encode()))\n"
-        "    api.on_tracker(lambda parser, engine, cards: seen.append(parser))\n")
+        "    api.on_tracker(lambda parser, engine, cards: seen.append(parser))\n"
+        "    api.add_nav('Hello', '/x/hello')\n")
     (d / "broken.py").write_text("raise RuntimeError('nope')\n")
     msgs = []
     assert plugins.load(cfg, log=msgs.append) == ["hello"]
@@ -442,4 +443,6 @@ def test_plugins_load_only_from_your_own_folder(tmp_path):
     assert plugins.route("/x/hello", {"n": "Roo"}) == (200, "text/plain", b"hi Roo")
     assert plugins.route("/x/other", {}) is None
     plugins.tracker_update("P", None, None)          # no error even with odd arguments
+    assert plugins.NAV == [{"label": "Hello", "path": "/x/hello"}]
     importlib.reload(plugins)
+    assert plugins.NAV == []                          # nobody else's menu changes

@@ -1,6 +1,6 @@
 {
- "version": "0.7.11",
+ "version": "0.7.12",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "Small fixes."
+ "notes": "Add-ons in your own plugins folder can add a link to the menu."
 }
