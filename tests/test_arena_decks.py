@@ -378,3 +378,19 @@ def test_swap_and_optimiser_weight_by_times_faced(tmp_path):
     for n in "abc":
         D.Deck(name=n, main=Counter({"Island": 60})).save(tmp_path / f"{n}.dck")
     assert runner.faced_weights(opps) is None                      # none known: spread evenly
+
+
+def test_optimiser_tries_every_card_in_a_long_pool(tmp_path):
+    """Each card to cut gets the pool's best bets plus a different slice of the rest, so a 40-card pool
+    isn't stuck on its first four cards."""
+    from collections import Counter
+    from brewbench import optimiser, formats
+    deck = D.Deck(name="t", commanders=["Zimone, Paradox Sculptor"],
+                  main=Counter({f"Card {i}": 1 for i in range(10)} | {"Island": 89}))
+    path = deck.save(tmp_path / "t.dck")
+    pool = [f"New {i}" for i in range(12)]
+    opt = optimiser.Optimiser(Config(tmp_path / "home"), formats.get("brawl"), path, [], pool, log=lambda *a: None)
+    opt.cut_candidates = lambda base: [f"Card {i}" for i in range(10)]
+    tried = [add for _, add, _ in opt.swaps([])]
+    assert tried[:2] == ["New 0", "New 1"]
+    assert set(tried) == set(pool)                       # everything gets a turn

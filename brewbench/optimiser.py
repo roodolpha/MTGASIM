@@ -133,12 +133,16 @@ class Optimiser:
                 outs.append(n)
         return outs
 
-    def swaps(self, base_games, per_out=4):
+    def swaps(self, base_games, per_out=4, lead=2):
+        """For each card to cut (weakest first): the first `lead` cards of the pool (put your best bets first),
+        then cards from the rest of the pool in turn, so every card in a long pool gets tried."""
         deck = self.deck
         ins = [p for p in self.pool if p not in deck.main and p not in deck.commanders]
-        for out in self.cut_candidates(base_games):
+        top, rest = ins[:lead], ins[lead:]
+        for i, out in enumerate(self.cut_candidates(base_games)):
             k = 0
-            for add in ins:
+            turn = rest[(i * (per_out - lead)) % len(rest):] + rest[:(i * (per_out - lead)) % len(rest)] if rest else []
+            for add in top + turn:
                 key = f"-{out}|+{add}|{deck_hash(deck)}"
                 if key in self.state["tried"]:
                     continue
