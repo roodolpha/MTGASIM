@@ -37,6 +37,9 @@ p{margin:0}
 .muted{color:var(--muted)}
 .sim{color:var(--sim)}
 .loading{color:var(--muted);padding:60px 0}
+/* keeps the footer below the fold while a page loads, so it doesn't jump when the content arrives */
+main#app{min-height:calc(100vh - 68px)}
+.tablewrap:focus-visible{outline:2px solid var(--gold,#D9B66A);outline-offset:2px}
 
 /* header */
 .top{border-bottom:1px solid var(--line);background:var(--ink)}
@@ -154,7 +157,7 @@ table.mx td.few{background:repeating-linear-gradient(135deg,var(--ink2) 0 6px,va
 .steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:28px;max-width:760px}
 .steps li{counter-increment:s;display:grid;grid-template-columns:48px 1fr;gap:4px 16px}
 .steps li::before{content:counter(s);grid-row:span 2;font:700 40px/1 var(--head);color:var(--gold)}
-.steps h3{font-size:24px}
+.steps h3,.steps h2.step{font-size:24px}
 .steps p{color:var(--muted)}
 .prose{max-width:72ch;padding-bottom:20px}
 .prose h1{margin:40px 0 16px}

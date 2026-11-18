@@ -49,7 +49,7 @@ async function loadCards(names) {
       for (const c of d.data || []) {
         const face = c.image_uris ? c : (c.card_faces || [])[0] || {};
         const img = face.image_uris || {};
-        const info = { img: img.normal, art: img.art_crop, artist: face.artist || c.artist };
+        const info = { img: img.normal, small: img.small, art: img.art_crop, artist: face.artist || c.artist };
         CARDS[c.name.toLowerCase()] = info;
         for (const f of c.card_faces || []) CARDS[f.name.toLowerCase()] = CARDS[f.name.toLowerCase()] || info;
       }
@@ -59,7 +59,8 @@ async function loadCards(names) {
   try { sessionStorage.setItem("cards", JSON.stringify(CARDS)); } catch (e) {}
 }
 const card = (n) => (n && CARDS[n.toLowerCase()]) || null;
-const imgTag = (c, alt) => `<img class="cardimg" src="${esc(c.img)}" alt="${esc(alt)}" loading="lazy" width="488" height="680">`;
+// small (146px) or normal (488px) Scryfall image, whichever the shown size needs
+const imgTag = (c, alt) => `<img class="cardimg" src="${esc(c.img)}"${c.small ? ` srcset="${esc(c.small)} 146w, ${esc(c.img)} 488w" sizes="(max-width:640px) 44vw, 210px"` : ""} alt="${esc(alt)}" loading="lazy" width="488" height="680">`;
 const cardImg = (name, alt = name) => {
   const c = card(name);
   return c && c.img ? imgTag(c, alt) : `<div class="cardimg ph" role="img" aria-label="${esc(alt)}" data-ph="${esc(name)}">${esc(name)}</div>`;
@@ -167,7 +168,7 @@ function archetypeBg(c) {
 
 function playerTable(rows, f, compact) {
   if (!rows.length) return '<p class="empty">Nobody public with enough games yet.</p>';
-  return `<div class="tablewrap"><table><thead><tr><th class="n">#</th><th>Player</th><th class="opt">Main deck</th><th class="n">Won</th><th class="opt">Likely true rate</th><th class="n">Games</th></tr></thead><tbody>${rows.map((r) => `<tr>
+  return `<div class="tablewrap" tabindex="0" role="region" aria-label="Table, scrolls sideways on small screens"><table><thead><tr><th class="n">#</th><th>Player</th><th class="opt">Main deck</th><th class="n">Won</th><th class="opt">Likely true rate</th><th class="n">Games</th></tr></thead><tbody>${rows.map((r) => `<tr>
    <td class="rank n">${r.pos}</td>
    <td><a href="/player/${encodeURIComponent(r.name)}">${esc(r.name)}</a></td>
    <td class="opt">${deckCell(r.main_deck, r.colours, f)}</td>
@@ -200,7 +201,7 @@ async function metaPage(m) {
     <p>Ladder results are real games people shared in the last 30 days. Sim results are Forge's AI playing the same decks thousands of times. The likely true rate is where the real win rate probably sits, given how many games there are.</p></div>
   ${fmtPicker("meta")}
   <section class="block" style="border-top:0;padding-top:24px">
-    ${decks.length ? `<div class="tablewrap"><table><thead><tr><th class="n">#</th><th>${isBrawl(FMT) ? "Commander" : "Deck"}</th><th class="n">Won on ladder</th><th class="opt">Likely true rate</th><th class="n">Sim</th><th class="n">Games</th><th class="n opt">Share of games</th></tr></thead><tbody>
+    ${decks.length ? `<div class="tablewrap" tabindex="0" role="region" aria-label="Table, scrolls sideways on small screens"><table><thead><tr><th class="n">#</th><th>${isBrawl(FMT) ? "Commander" : "Deck"}</th><th class="n">Won on ladder</th><th class="opt">Likely true rate</th><th class="n">Sim</th><th class="n">Games</th><th class="n opt">Share of games</th></tr></thead><tbody>
     ${decks.map((d, i) => `<tr><td class="rank n">${i + 1}</td><td>${deckCell(d.deck, d.colours, FMT)}</td>
       <td class="n">${d.real.games < 20 ? `<span class="thin" title="Under 20 games">${pc(d.real.win_rate)}</span>` : pc(d.real.win_rate)}</td>
       <td class="opt range">${range(d.real)}</td>
@@ -229,7 +230,7 @@ async function metaPage(m) {
       $("#who").onchange = (e) => { draw(+e.target.value); paintCards(); }; draw(0);
     } else {
       const shade = (v) => { const d = Math.max(-1, Math.min(1, (v - 0.5) / 0.15)); return `background:${d >= 0 ? `rgba(108,195,160,${(Math.abs(d) * 0.55 + 0.1).toFixed(2)})` : `rgba(229,138,110,${(Math.abs(d) * 0.55 + 0.1).toFixed(2)})`}`; };
-      $("#mx").innerHTML = `<div class="tablewrap"><table class="mx"><caption class="small" style="text-align:left;padding:10px 14px">Win rate of the row deck against the column deck</caption><thead><tr><th></th>${mx.decks.map((d) => `<th scope="col">${esc(label(d, FMT))}</th>`).join("")}</tr></thead><tbody>
+      $("#mx").innerHTML = `<div class="tablewrap" tabindex="0" role="region" aria-label="Table, scrolls sideways on small screens"><table class="mx"><caption class="small" style="text-align:left;padding:10px 14px">Win rate of the row deck against the column deck</caption><thead><tr><th></th>${mx.decks.map((d) => `<th scope="col">${esc(label(d, FMT))}</th>`).join("")}</tr></thead><tbody>
       ${mx.decks.map((a, i) => `<tr><th scope="row" style="white-space:nowrap">${esc(label(a, FMT))}</th>${mx.grid[i].map((c, j) => {
         if (i === j) return `<td class="few">–</td>`;
         const v = c.sim && c.sim.games >= 50 ? c.sim : c.real;
@@ -279,7 +280,7 @@ async function playerPage(m) {
     ${credit ? `<span class="credit">Art by ${esc(credit)}</span>` : ""}</div>
   <div class="two" style="margin-top:32px">
     <section><h2 style="margin-bottom:14px">Win rate by week</h2>${chart}</section>
-    <section><h2 style="margin-bottom:14px">Decks</h2><div class="tablewrap"><table><tbody>${decks.map((d) => `<tr><td>${deckCell(d.commander || d.colours, d.colours, d.format || "brawl")}
+    <section><h2 style="margin-bottom:14px">Decks</h2><div class="tablewrap" tabindex="0" role="region" aria-label="Table, scrolls sideways on small screens"><table><tbody>${decks.map((d) => `<tr><td>${deckCell(d.commander || d.colours, d.colours, d.format || "brawl")}
       <div class="small">${esc(fmtName(d.format))}, ${span(d.first, d.last)}${d.versions > 1 ? `, ${d.versions} versions of the list` : ""}</div></td>
       <td class="n">${pc(d.win_rate)}<div class="small">${games(d.games)}</div></td></tr>`).join("")}</tbody></table></div></section>
   </div>
@@ -295,11 +296,11 @@ function howPage() {
   title("How it works");
   $("#app").innerHTML = `<div class="pagehead"><h1>How it works</h1><p>Brewbench is an app for your PC. It reads your decks from Arena, builds opponents from the decks you've actually played against, and has Forge's AI play them against each other thousands of times.</p></div>
   <ol class="steps">
-    <li><h3>Install it</h3><p>${OS === "mac" ? `<a href="/download/mac">Download the Mac beta</a>. It isn't signed yet, so the first time, right-click the app and choose Open.` : `<a href="/download/windows">Download the installer</a> and run it. Until the app is code-signed, Windows may say it's from an unknown publisher: choose More info, then Run anyway.`} The first time it opens, it fetches Java and Forge by itself, which takes a few minutes.</p></li>
-    <li><h3>Tick one setting in Arena</h3><p>Options, then Account, then Detailed Logs (Plugin Support), then restart Arena. Without it, Arena doesn't write your decks or games to its log, so there's nothing for Brewbench to read. You can still paste a deck from Arena's Export button.</p></li>
-    <li><h3>Your decks and opponents appear</h3><p>Brewbench imports your Arena decks, and builds an opponent for each commander or archetype you've faced, weighted by how often you meet them.</p></li>
-    <li><h3>Test a change</h3><p>Swap a card and both versions play the same games: same shuffles, same opponents. If one does better, it's the cards, not luck. If the gap is too small to trust, it says so.</p></li>
-    <li><h3>Share, if you like</h3><p>Sharing is off until you turn it on. Shared games feed the numbers on this site. You're anonymous unless you pick a name. <a href="/privacy">What's sent</a></p></li>
+    <li><h2 class="step">Install it</h2><p>${OS === "mac" ? `<a href="/download/mac">Download the Mac beta</a>. It isn't signed yet, so the first time, right-click the app and choose Open.` : `<a href="/download/windows">Download the installer</a> and run it. Until the app is code-signed, Windows may say it's from an unknown publisher: choose More info, then Run anyway.`} The first time it opens, it fetches Java and Forge by itself, which takes a few minutes.</p></li>
+    <li><h2 class="step">Tick one setting in Arena</h2><p>Options, then Account, then Detailed Logs (Plugin Support), then restart Arena. Without it, Arena doesn't write your decks or games to its log, so there's nothing for Brewbench to read. You can still paste a deck from Arena's Export button.</p></li>
+    <li><h2 class="step">Your decks and opponents appear</h2><p>Brewbench imports your Arena decks, and builds an opponent for each commander or archetype you've faced, weighted by how often you meet them.</p></li>
+    <li><h2 class="step">Test a change</h2><p>Swap a card and both versions play the same games: same shuffles, same opponents. If one does better, it's the cards, not luck. If the gap is too small to trust, it says so.</p></li>
+    <li><h2 class="step">Share, if you like</h2><p>Sharing is off until you turn it on. Shared games feed the numbers on this site. You're anonymous unless you pick a name. <a href="/privacy">What's sent</a></p></li>
   </ol>
   <section class="block" style="margin-top:48px"><h2 style="margin-bottom:14px">What it can't do</h2><div class="prose">
     <p>Forge's AI plays well but not perfectly, and it misplays some cards. Trust comparisons ("this version beats that one") more than single numbers ("this is a 57% deck").</p>
@@ -326,7 +327,7 @@ function apiPage() {
   const ex = [["Meta for a format", "/v1/meta?format=standard"], ["Players", "/v1/leaderboard?format=brawl&days=30&min=50"],
     ["Matchups", "/v1/matchups?format=historic&top=8"], ["One public player", "/v1/players/NAME"]];
   $("#app").innerHTML = `<div class="pagehead"><h1>API</h1><p>Everything on this site comes from a free JSON API. No key needed. Responses are good for 5 minutes, so please cache them.</p></div>
-  <div class="tablewrap"><table><tbody>${ex.map(([t, e]) => `<tr><td style="width:180px">${t}</td><td><code>GET ${esc(API + e)}</code></td></tr>`).join("")}</tbody></table></div>
+  <div class="tablewrap" tabindex="0" role="region" aria-label="Table, scrolls sideways on small screens"><table><tbody>${ex.map(([t, e]) => `<tr><td style="width:180px">${t}</td><td><code>GET ${esc(API + e)}</code></td></tr>`).join("")}</tbody></table></div>
   <p class="note"><a href="https://github.com/roodolpha/MTGASIM/blob/main/docs/API.md">Full documentation</a></p>`;
 }
 
