@@ -20,8 +20,12 @@ const art = (name) => `https://api.scryfall.com/cards/named?exact=${encodeURICom
 const pct = (x) => Math.round(100 * x) + "%";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// through the service binding when there is one: Cloudflare blocks a workers.dev Worker fetching another
+// Worker on the same account over the internet (error 1042), which is why the binding exists
+let BOUND = null;
 async function api(path) {
-  const r = await fetch(API + path, { cf: { cacheEverything: true, cacheTtl: 300 } });
+  const r = BOUND ? await BOUND.fetch(new Request(API + path))
+                  : await fetch(API + path, { cf: { cacheEverything: true, cacheTtl: 300 } });
   if (!r.ok) { const e = new Error("api " + r.status); e.status = r.status; throw e; }
   return r.json();
 }
@@ -134,6 +138,7 @@ async function download(request, which) {
 
 export default {
   async fetch(request, env) {
+    BOUND = env.API || null;
     const url = new URL(request.url), path = url.pathname;
     const dl = path.match(/^\/download\/?([a-z.-]*)\/?$/);
     if (dl) return download(request, dl[1]);
