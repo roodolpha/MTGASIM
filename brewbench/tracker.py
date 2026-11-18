@@ -81,6 +81,7 @@ def run(cfg, log=print, stop=None):
         E.save_json(E.CONFIG_FILE, config)
         E.build_outputs(store, cards)
         STATE.update(status="watching", games=len(store))
+        from . import plugins
         log(f"Tracker: {len(store)} games on record ({len(store) - before} new from the log).")
         size = E._log_size()
         while not (stop and stop.wait(E.POLL_SECONDS)):
@@ -103,6 +104,7 @@ def run(cfg, log=print, stop=None):
                 pos, parser.cur = os.path.getsize(E.LOG), None
                 continue
             STATE["in_game"] = parser.cur is not None
+            plugins.tracker_update(parser, E, cards)
             if parser.new_match:
                 E.learn_my_user_id(store, config)
                 E.save_json(E.MATCHES_FILE, store)

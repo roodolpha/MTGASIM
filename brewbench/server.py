@@ -560,6 +560,10 @@ def make_handler(cfg, jobs):
                 return self._send(200, gauntlets(cfg))
             if path == "/api/optimiser":
                 return self._send(200, optimiser_list(cfg))
+            from . import plugins   # your own add-ons, if you've made a plugins folder; none ship with Brewbench
+            hit = plugins.route(path, {k: v[-1] for k, v in parse_qs(u.query).items()})
+            if hit:
+                return self._send(hit[0], hit[2], hit[1])
             return self._send(404, {"error": "not found"})
 
         def _post(self):
@@ -803,6 +807,9 @@ def serve(cfg, port=8780, open_browser=True, track=True):
     crash.setup(cfg)
     jobs = JOBS = Jobs()
     threading.Thread(target=_watch_outside, name="sim-watch", daemon=True).start()
+    from . import plugins
+    plugins.load(cfg, lambda m: print(m))
+    plugins.APP["port"] = port
     if track:
         from . import tracker
         tracker.start(cfg)

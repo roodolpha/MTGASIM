@@ -1,6 +1,6 @@
 {
- "version": "0.7.10",
+ "version": "0.7.11",
  "url": "https://mtgasim.roododger.workers.dev/download/brewbench-setup.exe",
  "page": "https://mtgasim.roododger.workers.dev/",
- "notes": "A test waiting its turn now gets the PC next, instead of waiting behind another test that keeps starting new runs."
+ "notes": "Small fixes."
 }

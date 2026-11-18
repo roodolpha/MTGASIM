@@ -230,6 +230,8 @@ class App:
             "Brewbench", URL, width=1360, height=900, min_size=(900, 600),
             background_color="#0F0F10", hidden=self.background, text_select=True)
         self.window.events.closing += self._on_closing
+        from . import plugins
+        plugins.APP["webview"] = webview   # lets your own add-ons open a small window
         webview.start(private_mode=False, storage_path=str(self.cfg.home / "webview"))
         # webview.start returns when the last window is destroyed
         self.quit()

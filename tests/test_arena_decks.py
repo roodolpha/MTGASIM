@@ -417,3 +417,29 @@ def test_queued_test_gets_the_next_turn(tmp_path, monkeypatch):
     w = threading.Thread(target=lambda: mk("waiting", 0).start()); w.start()
     t.join(10); w.join(10)
     assert "waiting" in order[:3], order
+
+
+def test_plugins_load_only_from_your_own_folder(tmp_path):
+    """No plugins folder: nothing loads. A plugin can add a page and hear about tracker updates, and a broken
+    one is skipped without stopping anything."""
+    import importlib
+    from brewbench import plugins
+    importlib.reload(plugins)
+    cfg = Config(tmp_path / "home")
+    assert plugins.load(cfg, log=lambda *a: None) == []
+    importlib.reload(plugins)
+    d = cfg.home / "plugins"
+    d.mkdir(parents=True)
+    (d / "hello.py").write_text(
+        "seen = []\n"
+        "def setup(api):\n"
+        "    api.add_route('/x/hello', lambda q: (200, 'text/plain', b'hi ' + q.get('n', '').encode()))\n"
+        "    api.on_tracker(lambda parser, engine, cards: seen.append(parser))\n")
+    (d / "broken.py").write_text("raise RuntimeError('nope')\n")
+    msgs = []
+    assert plugins.load(cfg, log=msgs.append) == ["hello"]
+    assert any("broken failed" in m for m in msgs)
+    assert plugins.route("/x/hello", {"n": "Roo"}) == (200, "text/plain", b"hi Roo")
+    assert plugins.route("/x/other", {}) is None
+    plugins.tracker_update("P", None, None)          # no error even with odd arguments
+    importlib.reload(plugins)
