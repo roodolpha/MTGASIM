@@ -18,6 +18,8 @@ from . import forge
 BATCH = 20            # most games per Java start-up
 MIN_BATCH = 5         # fewest, unless the run itself is smaller
 GAME_TIMEOUT = 180    # seconds before a stuck game counts as a draw
+WAIT_POLL = 2         # seconds between a queued test's checks for its turn
+WAITING_FRESH = 5     # seconds a queued test's "I'm next" mark counts for (more than WAIT_POLL)
 SETTLED = 20          # seconds a Java process must have run before its death can count as "closed outside"
 CLOSE_WINDOW = 6      # seconds: this many Java processes failing this close together means they were closed
 
@@ -283,16 +285,27 @@ class Run:
         """Plays the run. If another test is already running on this PC, waits for it first
         (waiting(True) / waiting(False) tell the caller)."""
         lock = SimLock(self.cfg.home / "sim.lock")
+        wait = self.cfg.home / "sim.waiting"
+        # fairness: if another test is queued, let it go first instead of grabbing the PC straight back
+        try:
+            if time.time() - wait.stat().st_mtime < WAITING_FRESH and wait.read_text().strip() != self.id:
+                time.sleep(WAITING_FRESH)
+        except (OSError, ValueError):
+            pass
         if not lock.acquire():
             self.log("Another test is running on this PC; this one starts when it finishes.")
             if waiting:
                 waiting(True)
             while not lock.acquire():
+                try:
+                    wait.write_text(self.id)     # "I'm next": see the check above
+                except OSError:
+                    pass
                 if self.stopping:
                     if waiting:
                         waiting(False)
                     return []
-                time.sleep(2)
+                time.sleep(WAIT_POLL)
             if waiting:
                 waiting(False)
         try:

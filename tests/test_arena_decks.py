@@ -394,3 +394,26 @@ def test_optimiser_tries_every_card_in_a_long_pool(tmp_path):
     tried = [add for _, add, _ in opt.swaps([])]
     assert tried[:2] == ["New 0", "New 1"]
     assert set(tried) == set(pool)                       # everything gets a turn
+
+
+def test_queued_test_gets_the_next_turn(tmp_path, monkeypatch):
+    """A test that keeps starting runs back to back mustn't starve one that's waiting (the overnight bug)."""
+    import threading, time
+    from brewbench import formats, runner
+    monkeypatch.setattr(runner, "WAITING_FRESH", 0.6)
+    monkeypatch.setattr(runner, "WAIT_POLL", 0.1)
+    cfg = Config(tmp_path / "home")
+    order = []
+    def mk(name, n):
+        r = runner.Run(cfg, formats.get("standard"), tmp_path / "x.dck", [], 0, instances=1,
+                       out_dir=tmp_path / name, log=lambda *a: None)
+        r._start = lambda progress=None: (order.append(name), time.sleep(0.3), [])[2]
+        return r
+    def busy():                       # back-to-back runs, like an optimiser
+        for _ in range(4):
+            mk("busy", 0).start()
+    t = threading.Thread(target=busy); t.start()
+    time.sleep(0.1)
+    w = threading.Thread(target=lambda: mk("waiting", 0).start()); w.start()
+    t.join(10); w.join(10)
+    assert "waiting" in order[:3], order
