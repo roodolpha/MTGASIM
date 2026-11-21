@@ -22,6 +22,53 @@ WAIT_POLL = 2         # seconds between a queued test's checks for its turn
 WAITING_FRESH = 5     # seconds a queued test's "I'm next" mark counts for (more than WAIT_POLL)
 SETTLED = 20          # seconds a Java process must have run before its death can count as "closed outside"
 CLOSE_WINDOW = 6      # seconds: this many Java processes failing this close together means they were closed
+ARENA_CHECK = 5       # seconds between checks for MTG Arena being open
+ARENA_POLL = 3        # seconds a batch waits before checking again whether it may start
+WHILE_ARENA = ("slow", "pause", "full")   # what sims do while Arena is open (setting "while_arena")
+
+
+# ---- being polite while Arena is open -------------------------------------------------------------------
+# Sims are CPU-heavy. While you're playing Arena they shouldn't slow the game down, so new batches either
+# wait until only one is running ("slow", the default), wait until Arena closes ("pause"), or ignore it
+# ("full"). Batches already running finish normally; each is only a few minutes of games.
+_ARENA = {"open": False, "checked": 0.0}
+_ACTIVE = {"n": 0, "waiting": 0}   # batches running now / held back by Arena
+_ACTIVE_LOCK = threading.Lock()
+
+
+def _arena_open_now():
+    try:
+        if os.name == "nt":
+            r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq MTGA.exe", "/NH", "/FO", "CSV"],
+                               capture_output=True, text=True, timeout=10, creationflags=0x08000000)
+            return "mtga.exe" in r.stdout.lower()
+        r = subprocess.run(["pgrep", "-x", "MTGA"], capture_output=True, text=True, timeout=10)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def arena_open():
+    """Is MTG Arena running? Cached for ARENA_CHECK seconds."""
+    now = time.time()
+    if now - _ARENA["checked"] >= ARENA_CHECK:
+        _ARENA.update(open=_arena_open_now(), checked=now)
+    return _ARENA["open"]
+
+
+def while_arena(cfg):
+    mode = (cfg.get("while_arena") or "slow") if cfg else "slow"
+    return mode if mode in WHILE_ARENA else "slow"
+
+
+def load_state(cfg=None):
+    """What sims are doing to this PC right now, for the app's banner."""
+    mode = while_arena(cfg)
+    instances = (cfg.get("instances") if cfg else None) or max(1, (os.cpu_count() or 2) // 2)
+    busy = _ACTIVE["n"] or _ACTIVE["waiting"]
+    arena = arena_open() if busy and mode != "full" else False   # only look for Arena while sims are going
+    return {"active": _ACTIVE["n"], "waiting": _ACTIVE["waiting"], "instances": instances,
+            "threads": os.cpu_count() or 0, "arena": arena, "while_arena": mode, "held": arena}
 
 
 def plan(opponents, games, batch=BATCH, weights=None):
@@ -142,6 +189,12 @@ def batch_size(games, instances):
     return max(1, min(BATCH, games, max(MIN_BATCH, math.ceil(games / max(1, instances)))))
 
 
+class _Retry:
+    """A batch that came up short and should be tried once more."""
+    def __init__(self, games, missing):
+        self.games, self.missing = games, missing
+
+
 class Run:
     """One simulation run. Results stream to <out_dir>/<run_id>.jsonl as games finish."""
 
@@ -185,6 +238,40 @@ class Run:
             target = f"@{lst.resolve()}"
         cmd = forge.command(java, forge_dir, self.fmt, self.deck.resolve(), target, n, tmp.resolve(),
                             GAME_TIMEOUT, seed)
+        if not self._wait_for_turn():
+            return []
+        try:
+            got = self._launch(cmd, forge_dir, segs, n, tmp, errf, seed, idx, attempt, java)
+        finally:
+            with _ACTIVE_LOCK:
+                _ACTIVE["n"] -= 1
+        if isinstance(got, _Retry):
+            return got.games + self._batch(java, forge_dir, got.missing, 0, idx + 10000, attempt=2)
+        return got
+
+    def _wait_for_turn(self):
+        """Holds a batch back while Arena is open (see while_arena). False if Stop was pressed meanwhile."""
+        mode = while_arena(self.cfg)
+        counted = False
+        try:
+            while True:
+                if self.stopping:
+                    return False
+                arena = mode != "full" and arena_open()   # outside the lock: the check can take a moment
+                with _ACTIVE_LOCK:
+                    if not (arena and (mode == "pause" or _ACTIVE["n"] >= 1)):
+                        _ACTIVE["n"] += 1
+                        return True
+                    if not counted:
+                        _ACTIVE["waiting"] += 1
+                        counted = True
+                time.sleep(ARENA_POLL)
+        finally:
+            if counted:
+                with _ACTIVE_LOCK:
+                    _ACTIVE["waiting"] -= 1
+
+    def _launch(self, cmd, forge_dir, segs, n, tmp, errf, seed, idx, attempt, java):
         flags = (0x08000000 | 0x00004000) if os.name == "nt" else 0   # no console window, below-normal priority
         t0 = time.time()
         err = open(errf, "w", encoding="utf-8", errors="replace")
@@ -253,7 +340,7 @@ class Run:
                 return games
             if attempt == 1:
                 self.log(f"{short} game(s) vs {names} didn't finish; trying them again")
-                return games + self._batch(java, forge_dir, missing, 0, idx + 10000, attempt=2)
+                return _Retry(games, missing)   # retried by _batch once this batch's slot is free
             with self.lock:
                 self.missing += short
                 self.problems += [f"{k} vs {o.stem}" for o, k in missing]

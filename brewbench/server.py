@@ -541,7 +541,8 @@ def make_handler(cfg, jobs):
             if path == "/api/diagnostics":
                 return self._send(200, diagnostics_zip(cfg), "application/zip")
             if path == "/api/settings":
-                return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec", "crash_reports")})
+                return self._send(200, {k: cfg.get(k) for k in ("ai_profile", "instances", "edhrec", "crash_reports",
+                                                                 "while_arena")})
             if path == "/api/plugins":     # links your own add-ons put in the menu (none unless you have some)
                 from . import plugins
                 return self._send(200, {"nav": plugins.NAV})
@@ -551,7 +552,8 @@ def make_handler(cfg, jobs):
                                         "job": jobs.view(), "outside": {k: _OUTSIDE[k] for k in ("games", "drivers")},
                                         "swap": {k: SWAP.get(k) for k in ("state", "phase", "done", "games", "deck")},
                                         "opt": {"state": OPT.get("state"), "deck": OPT.get("deck"),
-                                                "last": (OPT.get("log") or [""])[-1]}})
+                                                "last": (OPT.get("log") or [""])[-1]},
+                                        "load": runner.load_state(cfg)})
             if path == "/api/runs":
                 return self._send(200, run_list(cfg))
             if path.startswith("/api/runs/"):
@@ -613,6 +615,8 @@ def make_handler(cfg, jobs):
                             cfg.set(k, conv(body[k]))
                         except (TypeError, ValueError):
                             return self._send(400, {"error": f"bad {k}"})
+                if body.get("while_arena") in runner.WHILE_ARENA:
+                    cfg.set("while_arena", body["while_arena"])
                 return self._send(200, {"ok": True})
             if path == "/api/update/install":
                 from . import updates
@@ -702,13 +706,7 @@ def make_handler(cfg, jobs):
                 pool.update({n: pool.get(n, 0) + 1 for n in me.side if n not in have})
                 return self._send(200, {"cards": [n for n, _ in sorted(pool.items(), key=lambda x: (-x[1], x[0]))][:120]})
             if path == "/api/stop":   # stops everything: the app's run and any started from the command line
-                jobs.stop()
-                if _OPT_RUN["o"] is not None:
-                    _OPT_RUN["o"].stop()
-                if _SWAP_RUN["r"] is not None:
-                    _SWAP_RUN["r"].stop()
-                n = runner.kill_all_sims()
-                _OUTSIDE.update(games=0, drivers=0)
+                n = stop_everything()
                 return self._send(200, {"ok": True, "job": jobs.view(), "ended": n})
             if path.startswith("/api/gauntlet/"):
                 fk = str(body.get("format") or "")
@@ -802,6 +800,20 @@ class _Server(ThreadingHTTPServer):
 ON_SHOW = None   # set by the desktop app: brings its window forward
 ON_QUIT = None   # set by the desktop app: closes it (so an update can install over it)
 JOBS = None
+
+
+def stop_everything():
+    """Stops every sim: the app's run, a change test, the optimiser, and any started from the command line.
+    Used by the Stop buttons, the tray's Stop all sims, and Quit. Returns how many outside processes ended."""
+    for stop in (lambda: JOBS and JOBS.stop(), lambda: _OPT_RUN["o"] and _OPT_RUN["o"].stop(),
+                 lambda: _SWAP_RUN["r"] and _SWAP_RUN["r"].stop()):
+        try:
+            stop()
+        except Exception:
+            pass
+    n = runner.kill_all_sims()
+    _OUTSIDE.update(games=0, drivers=0)
+    return n
 
 
 def serve(cfg, port=8780, open_browser=True, track=True):

@@ -172,7 +172,7 @@ async function runs() {
   if (!all.length) { $('#main').innerHTML = head + `<p class="dim" style="margin:0">Nothing simulated yet. Add a deck, then start a run and leave it going.</p></div>`; return; }
   const games = all.reduce((n, r) => n + ((r.summary || {}).games || 0), 0);
   const best = all.filter(r => (r.summary || {}).games >= 50).sort((x, y) => y.summary.win_rate - x.summary.win_rate)[0];
-  $('#main').innerHTML = head + `<div id="runbanner" class="panel" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap" hidden><b>A sim is running.</b><span class="dim">It keeps your PC busy until it finishes. Games already played are kept.</span><button class="btn stop" style="margin-left:auto" id="bstop">Stop all sims</button></div><div class="strip"><div><b>${all.length}</b><span>runs</span></div><div><b>${games.toLocaleString()}</b><span>games simmed</span></div>${best ? `<div><b class="sim">${pct(best.summary.win_rate)}</b><span>best: ${esc(best.label)}</span></div>` : ''}</div></div>
+  $('#main').innerHTML = head + `<div id="runbanner" class="panel" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap" hidden><b>A sim is running.</b><span class="dim" id="runload">It keeps your PC busy until it finishes. Games already played are kept.</span><button class="btn stop" style="margin-left:auto" id="bstop">Stop all sims</button></div><div class="strip"><div><b>${all.length}</b><span>runs</span></div><div><b>${games.toLocaleString()}</b><span>games simmed</span></div>${best ? `<div><b class="sim">${pct(best.summary.win_rate)}</b><span>best: ${esc(best.label)}</span></div>` : ''}</div></div>
   <div class="panel"><table><thead><tr><th>Deck</th><th>Format</th><th class="n">Win rate</th><th class="n">Games</th><th class="n">Opponents</th><th class="n">Date</th></tr></thead><tbody>
   ${all.map(r => { const s = r.summary || {}; const ci = s.ci95 && s.games ? `${pct(s.ci95[0])}–${pct(s.ci95[1])}` : '';
     return `<tr class="go" data-run="${esc(r.run)}" tabindex="0"><td><b>${esc(r.label)}</b></td><td class="dim">${esc(r.format)}</td>
@@ -484,9 +484,10 @@ async function settings() {
   <div class="panel"><h2 style="margin-bottom:10px">Simulator</h2><div class="form">
    <label>Forge AI<select id="sai">${['Default','Cautious','Reckless','Experimental','Hard','Hardest'].map(a => `<option ${a === (s.ai_profile || 'Default') ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
    <label>Games at once<input id="sinst" type="number" min="1" max="32" value="${esc(s.instances || '')}" placeholder="auto" style="width:110px"></label>
+   <label>While Arena is open<select id="sarena">${[['slow', 'Slow down to one game at a time'], ['pause', 'Pause until Arena closes'], ['full', 'Keep going at full speed']].map(([v, t]) => `<option value="${v}" ${v === (s.while_arena || 'slow') ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)"><input type="checkbox" id="sedh" ${s.edhrec ? 'checked' : ''} style="min-height:auto"> Use EDHREC lists for Brawl opponents</label>
    <label style="flex-direction:row;align-items:center;gap:8px;color:var(--text)" title="Sends the error message, where it happened, and your Brewbench and Windows versions. Your user name is scrubbed out. Never any Arena data, decks or games."><input type="checkbox" id="scrash" ${s.crash_reports ? 'checked' : ''} style="min-height:auto"> Send crash reports (helps fix bugs; no personal or game data)</label>
-   <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC.</p></div>
+   <button class="btn" id="ssave">Save</button></div><p id="smsg" class="dim" style="margin:10px 0 0">Hardest plays best but is slowest. More games at once = faster, hotter PC. Sims run at low priority and only when you start one.</p></div>
   <div class="panel"><h2 style="margin-bottom:10px">About</h2>
    <p style="margin:0 0 6px">Brewbench ${esc(up.current)} · Forge ${esc((st.forge || {}).version || 'not set up')} · Java ${esc((st.java || {}).version || '?')}</p>
    <p style="margin:0 0 12px">${up.newer ? `<b style="color:var(--hot)">Version ${esc(up.latest)} is out</b> (see the banner up top).` : up.latest ? 'You\'re on the latest version.' : '<span class="dim">Couldn\'t check for updates.</span>'} <button class="btn ghost" id="supd" style="min-height:32px;padding:0 12px;font-size:13px;margin-left:6px">Check now</button></p>
@@ -494,7 +495,7 @@ async function settings() {
    <button class="btn ghost" id="ssetup">Setup checklist</button>
    <a class="btn ghost" href="https://discord.gg/kTnCXydsgC" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none">Join the Discord</a></div>
    <p class="dim" style="font-size:13px;margin:10px 0 0">Diagnostics is a zip of logs and settings to attach to a bug report. It leaves out your Arena account and sharing key.</p></div></div>`;
-  $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked, crash_reports: $('#scrash').checked}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
+  $('#ssave').onclick = async () => { const r = await api('/api/settings', {ai_profile: $('#sai').value, instances: $('#sinst').value, edhrec: $('#sedh').checked, crash_reports: $('#scrash').checked, while_arena: $('#sarena').value}); $('#smsg').textContent = r.error || 'Saved. Applies to the next run.'; };
   $('#ssetup').onclick = () => show('setup');
   $('#supd').onclick = async () => { try { localStorage.removeItem('upd-hide'); } catch (e) {} await updateBanner(true); settings(); };
   shareBox();
@@ -557,6 +558,14 @@ function simming() {
   const swap = sw.state === 'running', op = (STATUS.opt || {}).state === 'running';
   return {mine, j, swap, sw, op, outside: !mine && !swap && !op && (o.games || o.drivers), any: mine || swap || op || o.games || o.drivers};
 }
+// what a running sim is doing to the PC, in plain words, so nobody wonders why the fans are on
+function loadText(l) {
+  if (!l) return 'It keeps your PC busy until it finishes. Games already played are kept.';
+  const pc = l.threads ? ` of your ${l.threads} CPU threads` : '';
+  if (l.held && l.while_arena === 'pause') return 'MTG Arena is open, so sims are paused until you close it. Games already played are kept.';
+  if (l.held) return `MTG Arena is open, so Brewbench has slowed to one game at a time. It speeds back up when Arena closes.`;
+  return `Using ${l.active || l.instances}${pc}, at low priority, until it finishes. Games already played are kept.`;
+}
 let POLL;
 async function poll() {
   clearTimeout(POLL);
@@ -572,6 +581,7 @@ async function poll() {
     $('#job').innerHTML = text + (s.any && !(j && j.state === 'stopping') ? ' <button class="btn stop" id="hstop">Stop sims</button>' : '');
     const hs = $('#hstop'); if (hs) hs.onclick = () => stopAll(hs);
     const banner = $('#runbanner'); if (banner) banner.hidden = !s.any;
+    const rl = $('#runload'); if (rl) rl.textContent = loadText(STATUS.load);
   } catch (e) { $('#job').textContent = 'Brewbench has stopped'; }
   POLL = setTimeout(poll, 2000);
 }

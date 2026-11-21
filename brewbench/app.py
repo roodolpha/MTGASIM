@@ -135,8 +135,7 @@ class App:
     def quit(self):
         self.quitting = True
         try:
-            if server.JOBS is not None:
-                server.JOBS.stop()   # don't leave Java sims running after the app has gone
+            server.stop_everything()   # don't leave any Java sims running after the app has gone
         except Exception:
             pass
         try:
@@ -175,11 +174,8 @@ class App:
             time.sleep(6 * 3600)
 
     def stop_sims(self):
-        from . import runner
         try:
-            if server.JOBS is not None:
-                server.JOBS.stop()
-            n = runner.kill_all_sims()
+            n = server.stop_everything()
             if self.tray is not None:
                 self.tray.notify("Stopped all sims. Games already played are kept." if n or server.JOBS
                                  else "No sims were running.", "Brewbench")
