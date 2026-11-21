@@ -133,7 +133,7 @@ async function home() {
       <h1>Play your deck a few thousand times before you craft the upgrade.</h1>
       <p class="lede">Brewbench plays your MTG Arena deck against the commanders and decks you actually meet on ladder, on your own PC. Swap a card, run both versions on the same shuffles, and see if it really helped.</p>
       <div class="actions">${downloadButtons()}</div>
-      <p class="fine">Free and open source. It only reads Arena's log file and never touches the game. <a href="/how">How it works</a></p>
+      <p class="fine">Free and open source. It only reads Arena's log file and never touches the game. Sims run on your PC only when you start one. <a href="/how">How it works</a></p>
     </div>
     <div class="swap" aria-label="A real Test a change result">
       <div class="pair">
@@ -306,6 +306,10 @@ function howPage() {
     <p>Forge's AI plays well but not perfectly, and it misplays some cards. Trust comparisons ("this version beats that one") more than single numbers ("this is a 57% deck").</p>
     <p>Most Alchemy rebalanced cards aren't in Forge, so Alchemy decks may run with cards missing. The app tells you which ones.</p>
     <p>It gives no advice during games and never touches Arena itself. It only reads the log file Arena writes.</p></div></section>
+  <section class="block"><h2 style="margin-bottom:14px">What it does to your PC</h2><div class="prose">
+    <p>Simulating thousands of games is hard work, so while a sim runs your fans may spin up. That only happens when you start one. Brewbench never runs sims in the background on its own.</p>
+    <p>By default it uses half your CPU threads, at low priority so everything else comes first. The app shows how many it's using, and Stop ends every sim straight away. If MTG Arena is open, it slows to one game at a time so your games stay smooth (you can pause it or keep full speed instead, in Settings).</p>
+    <p>No mining, no ads, no hidden work. The <a href="https://github.com/roodolpha/MTGASIM" rel="noopener">source code</a> is public, so you can check.</p></div></section>
   <section class="block"><div class="actions" style="display:flex;gap:12px;flex-wrap:wrap">${downloadButtons()}<a class="btn" href="${DISCORD}" rel="noopener">Ask in the Discord</a></div></section>`;
   bindDownload();
 }

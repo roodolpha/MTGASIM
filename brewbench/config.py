@@ -9,6 +9,7 @@ DEFAULTS = {
     "ai_profile": "Default",    # Forge AI personality: Default, Cautious, Reckless, Experimental...
     "instances": None,          # parallel games; empty = half your CPU threads
     "arena_log": None,          # Player.log; found automatically when empty
+    "while_arena": "slow",      # while MTG Arena is open: "slow" (one game at a time), "pause", or "full"
 }
 
 
